@@ -1,0 +1,84 @@
+# Certacito.ai Policy Rules Configuration
+# These live outside the model - can't be jailbroken or talked around
+# Version controlled via git
+
+rules:
+  - id: "RULE-001"
+    name: "Out-of-scope data access block"
+    action_type: "data_access"
+    risk_threshold: "Critical"
+    default_outcome: "DENY"
+    conditions: "session_scope != target_dataset"
+    reg_tag: "Privacy Act 1988"
+    active: true
+    version: 3
+
+  - id: "RULE-002"
+    name: "Unsanctioned external call block"
+    action_type: "external_call"
+    risk_threshold: "High"
+    default_outcome: "DENY"
+    conditions: "api_domain NOT IN approved_vendors"
+    reg_tag: "ISO 27001"
+    active: true
+    version: 2
+
+  - id: "RULE-003"
+    name: "High-volume file write escalation"
+    action_type: "file_write"
+    risk_threshold: "Medium"
+    default_outcome: "ESCALATE"
+    conditions: "writes_per_min > 100"
+    reg_tag: "SOC 2 Type II"
+    active: true
+    version: 4
+
+  - id: "RULE-004"
+    name: "Prompt injection detection"
+    action_type: "prompt_content"
+    risk_threshold: "Critical"
+    default_outcome: "DENY"
+    conditions: "input MATCHES injection_patterns"
+    reg_tag: "OWASP LLM Top 10"
+    active: true
+    version: 5
+
+  - id: "RULE-005"
+    name: "Approved tool invocation permit"
+    action_type: "tool_invoke"
+    risk_threshold: "Low"
+    default_outcome: "PERMIT"
+    conditions: "tool_id IN approved_tools"
+    reg_tag: "Internal Policy"
+    active: true
+    version: 1
+
+  - id: "RULE-006"
+    name: "External email send block"
+    action_type: "email_send"
+    risk_threshold: "High"
+    default_outcome: "DENY"
+    conditions: "recipient_domain NOT IN approved_domains"
+    reg_tag: "ASD Essential 8"
+    active: true
+    version: 2
+
+  - id: "RULE-007"
+    name: "Sensitive credential access log"
+    action_type: "credential_access"
+    risk_threshold: "Critical"
+    default_outcome: "ESCALATE"
+    conditions: "resource_type == credential"
+    reg_tag: "NIST CSF"
+    active: false
+    version: 1
+
+  - id: "RULE-008"
+    name: "Database schema read permit"
+    action_type: "db_read"
+    risk_threshold: "Low"
+    default_outcome: "PERMIT"
+    conditions: "operation == read AND table NOT IN restricted_tables"
+    reg_tag: "Internal Policy"
+    active: true
+    version: 1
