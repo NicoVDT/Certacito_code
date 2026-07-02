@@ -11,11 +11,17 @@ class GuardResult:
 
 
 class SemanticGuard:
-    # just a few obvious ones to get started
     INJECTION_PATTERNS = [
         (r"ignore\s+(all\s+)?previous\s+instructions", "injection", 0.9),
-        (r"you\s+are\s+now\s+(a|an)\s+", "jailbreak", 0.8),
-        (r"\[SYSTEM\]", "override", 0.9),
+        (r"disregard\s+(all\s+)?(prior|previous|above)", "injection", 0.9),
+        (r"you\s+are\s+now\s+(a|an)\s+", "jailbreak", 0.85),
+        (r"pretend\s+(you\s+are|to\s+be)", "jailbreak", 0.8),
+        (r"new\s+instruction[s]?\s*:", "override", 0.88),
+        (r"system\s*prompt\s*:", "override", 0.9),
+        (r"forget\s+(everything|all|what)", "injection", 0.85),
+        (r"\[SYSTEM\]", "override", 0.95),
+        (r"override\s+(previous|prior|all)\s+(rules|instructions|constraints)", "override", 0.9),
+        (r"do\s+not\s+follow\s+(any|the)\s+(rules|guidelines|instructions)", "injection", 0.9),
     ]
 
     def evaluate(self, content: str) -> GuardResult:
