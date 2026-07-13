@@ -1,0 +1,24 @@
+# single-image deploy for Azure App Service: builds the frontend, then bakes
+# the dist into the api image so FastAPI serves it (see main.py static mount).
+# one web app, no nginx to manage.
+
+FROM node:22-slim AS webbuild
+WORKDIR /build
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npx vite build
+
+FROM python:3.13-slim
+WORKDIR /app
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY backend/ ./backend/
+COPY --from=webbuild /build/dist ./frontend_dist/
+
+EXPOSE 8000
+
+# no --reload in prod
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
