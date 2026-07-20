@@ -5,7 +5,6 @@ import {
 } from "lucide-react";
 import * as api from "../../api/client";
 
-// brand colours - duplicated from App.tsx, will sort a shared module later (todo)
 const NAVY = "#1B3A6B";
 const TEAL = "#0D7377";
 const RED = "#C0392B";
@@ -31,8 +30,6 @@ interface Agent {
   complianceScore: number;
 }
 
-// base roster - real api data gets merged on top so anything missing from the
-// backend still shows up. keeps the screen from going empty during demo lol
 const agentData: Agent[] = [
   { id: "AGT-claims-014", name: "Claims Processor v2", type: "Claims Processing", status: "Active", riskTier: "Critical", decisionsToday: 47, violationsToday: 3, lastActivity: "2026-05-27 09:42", environment: "Production", model: "claude-sonnet-4-6", owner: "Claims Team", activeSince: "2025-11-15", assignedRules: ["RULE-001", "RULE-005"], complianceScore: 74 },
   { id: "AGT-research-002", name: "Research Assistant", type: "Research", status: "Active", riskTier: "High", decisionsToday: 23, violationsToday: 1, lastActivity: "2026-05-27 08:37", environment: "Production", model: "claude-sonnet-4-6", owner: "Research Team", activeSince: "2025-12-01", assignedRules: ["RULE-002", "RULE-005"], complianceScore: 88 },
@@ -100,8 +97,7 @@ export function AgentRegistryScreen({ initialSelectedAgentId = null }: { initial
   const [sortCol, setSortCol] = useState<string>("id");
   const [sortAsc, setSortAsc] = useState(true);
 
-  // merge real agent data from the api into the mock data. we only update
-  // fields the backend actually returns, the rest stays from the mock row
+  // merge real agent data from api into the mock data
   useEffect(() => {
     const load = async () => {
       try {
@@ -125,9 +121,7 @@ export function AgentRegistryScreen({ initialSelectedAgentId = null }: { initial
           }
           return merged;
         });
-      } catch {
-        // silent - keep mock data
-      }
+      } catch {}
     };
     load();
   }, []);
@@ -151,7 +145,7 @@ export function AgentRegistryScreen({ initialSelectedAgentId = null }: { initial
     e?.stopPropagation();
     const agent = agents.find(a => a.id === id);
     if (!agent) return;
-    // call the real api to suspend/activate
+    // call real api to suspend/activate
     try {
       if (agent.status === "Active") {
         await api.suspendAgent(id);
@@ -159,7 +153,7 @@ export function AgentRegistryScreen({ initialSelectedAgentId = null }: { initial
         await api.activateAgent(id);
       }
     } catch {
-      // still toggle locally if api fails - optimistic update basically
+      // still toggle locally if api fails
     }
     setAgents(prev => prev.map(a => a.id === id ? { ...a, status: a.status === "Active" ? "Suspended" : "Active" } : a));
   };
@@ -253,7 +247,6 @@ export function AgentRegistryScreen({ initialSelectedAgentId = null }: { initial
               <option>High</option>
               <option>Critical</option>
             </select>
-            {/* environment filter - not actually wired up yet, TODO team */}
             <select className="px-3 py-1.5 rounded border bg-gray-50 outline-none"
               style={{ borderColor: "rgba(27,58,107,0.1)", fontFamily: "Arial, sans-serif", fontSize: 12, color: "#374151" }}>
               <option>All environments</option>

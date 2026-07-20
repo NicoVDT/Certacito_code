@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import * as api from "../../api/client";
 
-// types match what the api spits back. snake_case here because the backend
-// uses snake_case and we just forward it straight up - didn't want to map every
-// field just for the dashboard to map them back lol
+// simple types matching what the api returns
 interface DashboardStats {
   total_intercepted: number;
   blocked: number;
@@ -26,8 +24,7 @@ interface AuditEntry {
   outcome: string;
 }
 
-// polls the api every few seconds for live-ish data. not true realtime (that
-// would be the websocket in App.tsx) but good enough as a fallback
+// hook that polls the api every few seconds for live-ish data
 export function useLiveDashboard(pollInterval = 5000) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<AuditEntry[]>([]);
@@ -63,7 +60,6 @@ export function useLiveDashboard(pollInterval = 5000) {
     };
   }, [pollInterval]);
 
-  // console.log("dash poll", stats) // noisy, keep commented
   return { stats, recentActivity, loading, error };
 }
 

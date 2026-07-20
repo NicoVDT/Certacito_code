@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import * as api from "../../api/client";
 
-// brand colours (duped across screens - someone plz unify these lol)
 const NAVY = "#1B3A6B";
 const TEAL = "#0D7377";
 const RED = "#C0392B";
@@ -16,8 +15,6 @@ const GREEN = "#27AE60";
 const AMBER = "#E67E22";
 const GOLD = "#F39C12";
 
-// circular gauge built w/ svg dasharray. tried recharts radialbar first but
-// it kept fighting me on the layout, plain svg was less hassle
 function ComplianceGauge({ score }: { score: number }) {
   const r = 52;
   const circ = 2 * Math.PI * r;
@@ -45,7 +42,6 @@ function ComplianceGauge({ score }: { score: number }) {
   );
 }
 
-// maps the api status string -> a colour + nice label
 function frameworkStatusStyle(status: string) {
   if (status === "compliant") return { bg: "#f0fdf4", color: GREEN, label: "Compliant" };
   if (status === "monitoring") return { bg: "#fff7ed", color: AMBER, label: "Monitoring" };
@@ -68,14 +64,11 @@ export function ReportsScreen() {
   const [newFrequency, setNewFrequency] = useState("weekly");
   const [newRecipient, setNewRecipient] = useState("");
 
-  // overview data loads once on mount
   useEffect(() => {
     api.getComplianceReport(30).then(setReport).catch(() => setReport(null));
     api.getWeeklyTrend(6).then(setTrend).catch(() => setTrend([]));
   }, []);
 
-  // lazy load the per-tab lists so we only hit those endpoints when the user
-  // actually opens the tab
   const loadExports = () => {
     api.getExports().then(data => { setExports(data || []); setExportsLoaded(true); })
       .catch(() => setExportsLoaded(true));
@@ -338,8 +331,6 @@ export function ReportsScreen() {
             </div>
           )}
 
-          {/* SMTP not wired up yet - keep the promise honest so nobody thinks
-              these actually get emailed atm */}
           <div className="rounded-lg px-4 py-2.5 border flex items-start gap-2" style={{ borderColor: `${TEAL}30`, background: `${TEAL}06` }}>
             <FileText size={13} style={{ color: TEAL, flexShrink: 0, marginTop: 1 }} />
             <p style={{ fontSize: 11, color: "#374151", lineHeight: 1.6 }}>

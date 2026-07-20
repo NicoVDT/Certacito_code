@@ -2,8 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Bot, Activity, PauseCircle, WifiOff } from "lucide-react";
 import * as api from "../../api/client";
 
-// brand colours again - could lift into a shared file but everyone keeps
-// editing their own copy, lol. TODO: dedupe these
 const NAVY = "#1B3A6B";
 const TEAL = "#0D7377";
 const RED = "#C0392B";
@@ -21,14 +19,14 @@ interface Agent {
   compliance: number;
 }
 
-// fallback mock data if the api is unavailable / unreachable
+// fallback mock data if the api is unavailable
 const mockAgents: Agent[] = [
   { id: "AGT-claims-014",    name: "Claims Processor",     status: "Active",    risk: "Critical", compliance: 74 },
   { id: "AGT-research-002",  name: "Research Assistant",   status: "Active",    risk: "High",     compliance: 88 },
   { id: "AGT-ops-009",       name: "Operations Agent",     status: "Active",    risk: "Medium",   compliance: 91 },
   { id: "AGT-support-031",   name: "Support Bot",          status: "Active",    risk: "Critical", compliance: 81 },
   { id: "AGT-finance-004",   name: "Finance Analyst",      status: "Active",    risk: "Low",      compliance: 98 },
-  { id: "AGT-health-018",    name: "Health Records Agent", status: "Suspended", risk: "High",      compliance: 62 },
+  { id: "AGT-health-018",    name: "Health Records Agent", status: "Suspended", risk: "High",     compliance: 62 },
   { id: "AGT-analytics-007", name: "Analytics Engine",     status: "Active",    risk: "Medium",   compliance: 95 },
   { id: "AGT-legal-022",     name: "Legal Reviewer",       status: "Active",    risk: "Low",      compliance: 99 },
   { id: "AGT-hr-011",        name: "HR Assistant",         status: "Offline",   risk: "Low",      compliance: 97 },
@@ -88,7 +86,6 @@ function ComplianceBar({ score }: { score: number }) {
         <span style={{ fontFamily: "Arial, sans-serif", fontSize: 11, fontWeight: 700, color }}>{score}%</span>
       </div>
       <div className="w-full rounded-full overflow-hidden" style={{ height: 5, background: "#e5e7eb" }}>
-        {/* scaleX trick instead of width% so it animates smoothly */}
         <div className="rounded-full origin-left" style={{ width: "100%", height: 5, background: color, transform: `scaleX(${score / 100})`, transition: "transform 0.4s" }} />
       </div>
     </div>
@@ -136,10 +133,9 @@ function AgentCard({ agent, onViewRegistry }: { agent: Agent; onViewRegistry: (i
   );
 }
 
-// helpers for mapping the api payload into our display shape. the backend
-// doesn't really expose a "risk tier" so we fake one from the blocked ratio
+// helpers for mapping api response to our display format
 function guessRisk(agent: any): Risk {
-  // base risk on blocked ratio - not perfect but ok for the overview cards
+  // base risk on blocked ratio
   if (agent.total_actions === 0) return "Low";
   const ratio = agent.blocked_actions / agent.total_actions;
   if (ratio > 0.5) return "Critical";
@@ -150,15 +146,14 @@ function guessRisk(agent: any): Risk {
 
 function calcCompliance(agent: any): number {
   if (agent.total_actions === 0) return 100;
-  // compliance = % of actions that werent blocked
+  // compliance = percentage of actions that werent blocked
   return Math.round(((agent.total_actions - agent.blocked_actions) / agent.total_actions) * 100);
 }
 
 export function AgentOverviewScreen({ onViewRegistry }: { onViewRegistry: (id: string) => void }) {
   const [agents, setAgents] = useState<Agent[]>(mockAgents);
 
-  // pull real agents from the api, but keep mock data as a fallback so the
-  // screen still renders something when the backend is down
+  // fetch real agents from the api
   useEffect(() => {
     const load = async () => {
       try {
@@ -177,7 +172,6 @@ export function AgentOverviewScreen({ onViewRegistry }: { onViewRegistry: (id: s
       }
     };
     load();
-    // 10s poll - felt like a good balance, every 2s was hammering the api
     const timer = setInterval(load, 10000);
     return () => clearInterval(timer);
   }, []);

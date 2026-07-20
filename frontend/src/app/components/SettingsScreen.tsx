@@ -1,13 +1,10 @@
-import { Toggle } from "./SettingsUtils";
-import React, { useState, useEffect, useRef } from "react";
-// import { debounce } from "lodash"; // TODO: use this for the search bar later
+import React, { useState, useEffect } from "react";
 import {
   Building2, Users, Bell, Key, Zap, Copy, RefreshCw, Plus,
   Check, X, Globe, Trash2, Shield, ChevronRight,
 } from "lucide-react";
 import * as api from "../../api/client";
 
-// brand colours (duped again - TODO share these across screens)
 const NAVY = "#1B3A6B";
 const TEAL = "#0D7377";
 const RED = "#C0392B";
@@ -49,8 +46,7 @@ interface Integration {
 
 
 // none of these are actually wired up yet - keep the status honest instead of
-// claiming a live connection nobody built. better to show "not built" than
-// have a Connect button that does nothing
+// claiming a live connection nobody built
 const integrations: Integration[] = [
   { id: "INT-001", name: "Splunk SIEM", category: "Security", description: "Stream all policy decisions and audit events to Splunk for centralised security monitoring.", status: "Not connected", detail: "Not built for this release", logo: "SP" },
   { id: "INT-002", name: "Slack", category: "Notifications", description: "Send real-time alerts for escalated and critical-risk events to a Slack channel.", status: "Not connected", detail: "Not built for this release", logo: "SL" },
@@ -68,13 +64,25 @@ const roleColors: Record<string, { bg: string; text: string }> = {
   "Read-Only Analyst": { bg: "#f1f5f9", text: "#6b7a99" },
 };
 
-
+function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button onClick={onChange}
+      className="relative flex-shrink-0"
+      style={{ width: 36, height: 20, borderRadius: 10, background: checked ? TEAL : "#d1d5db", transition: "background 0.2s" }}>
+      <span style={{
+        position: "absolute", top: 2, left: checked ? 18 : 2,
+        width: 16, height: 16, borderRadius: 8,
+        background: "#fff", transition: "left 0.2s",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+      }} />
+    </button>
+  );
+}
 
 export function SettingsScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("organization");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [membersLoaded, setMembersLoaded] = useState(false);
-  // const [debugUsers, setDebugUsers] = useState(null); // why was this crashing the render??
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
 
@@ -89,7 +97,6 @@ export function SettingsScreen() {
           id: u.id,
           name: u.email.split("@")[0],
           email: u.email,
-          // backend roles map onto our display roles - names don't line up 1:1
           role: u.role === "Administrator" ? "Domain Administrator" : u.role === "Analyst" ? "Security Reviewer" : "Read-Only Analyst",
           lastLogin: u.created_at?.split("T")[0] || "—",
           status: u.is_active ? "Active" as const : "Inactive" as const,
@@ -136,8 +143,6 @@ export function SettingsScreen() {
     setShowCreateKey(false);
     loadKeys();
   };
-
-  // const testKeyRender = () => { console.log("rendering key", keys) }
 
   const handleRotateKey = async (key: ApiKey) => {
     const rotated = await api.rotateApiKey(key.id);
@@ -288,7 +293,6 @@ export function SettingsScreen() {
               </div>
 
               <div className="flex justify-end gap-3">
-                {/* TODO: these don't actually persist anywhere yet, just visual */}
                 <button onClick={() => setSavedOrg(false)}
                   className="px-4 py-2 rounded border font-semibold"
                   style={{ borderColor: "rgba(27,58,107,0.2)", color: NAVY, fontFamily: "Arial, sans-serif", fontSize: 13 }}>
