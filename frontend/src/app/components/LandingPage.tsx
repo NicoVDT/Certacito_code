@@ -5,7 +5,6 @@ import {
   Activity, FlaskConical, Check, ArrowRight, Menu, X,
 } from "lucide-react";
 
-// brand colours - match what App.tsx uses so they don't drift apart
 const NAVY = "#1B3A6B";
 const TEAL = "#0D7377";
 const RED = "#C0392B";
@@ -22,7 +21,6 @@ function Navbar({ onLogin }: { onLogin: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // pick up scroll so the navbar gets a bg once we leave the top
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handler);
@@ -91,8 +89,6 @@ function Navbar({ onLogin }: { onLogin: () => void }) {
 }
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
-// the rows in the little live feed box - just hardcoded for the landing page,
-// real feed is on the dashboard
 const liveFeedRows = [
   { id: "AGT-claims-014", action: "data_access", outcome: "DENY", color: RED },
   { id: "AGT-support-031", action: "prompt_content", outcome: "DENY", color: RED },
@@ -128,7 +124,8 @@ function Hero({ onLogin }: { onLogin: () => void }) {
             </div>
 
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 460, lineHeight: 1.6 }}>
-              The demo below runs against the live policy engine, not staged screenshots.
+              Built for CSIT321 (University of Wollongong). The demo below runs against the
+              live policy engine, not staged screenshots.
             </p>
           </div>
 
@@ -371,8 +368,6 @@ function Footer({ onLogin }: { onLogin: () => void }) {
 }
 
 // ── Landing Page ──────────────────────────────────────────────────────────────
-// onSignUp prop is part of the interface but the demo just funnels everything
-// to login for now - team can wire a real signup flow later
 export function LandingPage({ onLogin }: LandingPageProps) {
   return (
     <div style={{ overflowX: "hidden" }}>
