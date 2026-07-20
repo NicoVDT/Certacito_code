@@ -1,17 +1,184 @@
-# Architecture Overview
+# System Architecture
 
-## Backend
-- **FastAPI**: Handles all API requests.
-- **PostgreSQL**: Stores users, policies, and the audit log.
-- **Policy Engine**: Evaluates intercepted prompts against the YAML rules.
-- **Semantic Guard**: Checks for injection patterns using regex.
-- **Audit Service**: Appends events to a SHA-256 hash chain to prevent tampering.
+Certacito.ai is a governance layer that sits between an AI agent and the actions it
+wants to take. Every tool call is intercepted before execution, evaluated against
+policy that lives outside the model, and recorded in a tamper-evident log.
 
-## Frontend
-- **React 18 & Vite**: Single page application.
-- **Tailwind CSS**: For styling components.
-- **WebSockets**: Used for the live dashboard feed.
+This describes what is actually built and deployed, not a target state.
+
+## The layers
+
+```
+  Agent (OpenClaw)
+        |  tool call proposed
+        v
+  Interception hook          certacito-hook / certacito-exec-gate
+        |  POST /api/v1/intercept  (X-API-Key)
+        v
+  Governance API             FastAPI, Python 3.13
+        |-- semantic guardrail      (runs first, can short-circuit)
+        |-- risk classifier
+        |-- policy engine           (fail-closed)
+        |-- approval service        (on ESCALATE)
+        v
+  Persistence                PostgreSQL 16 (audit chain, queue, rules, users)
+                             Redis 7 (rate limiting, transient state)
+        |
+        v
+  Dashboard                  React 18 SPA, WebSocket push
+```
+
+## Front end
+
+React 18 with TypeScript, built by Vite 6.3. Tailwind CSS 4 for styling, Recharts
+for the dashboard visualisations, Radix primitives underneath the component set
+inherited from the A3 Figma work.
+
+The SPA is a single bundle. `API_BASE` resolves to `import.meta.env.VITE_API_URL || ""`,
+so in the deployed configuration the frontend calls the same origin it was served
+from and needs no build-time API URL.
+
+Live updates come over a WebSocket at `/api/v1/ws/live` rather than polling. The
+socket authenticates with `?token=<jwt>`; an unauthenticated socket is rejected.
+Polling exists only as a fallback if the socket cannot connect.
+
+## Back end
+
+FastAPI on Python 3.13, served by uvicorn. Fourteen routers mounted under
+`/api/v1`: interception, audit, approval, policy, auth, stats, guardrails,
+websocket, agents, demo, reports, dryrun, trends and API keys.
+
+Two pieces of middleware sit in front of every request: CORS, and a rate limiter
+allowing 60 requests/minute generally and 10/minute on auth endpoints. Behind a
+reverse proxy the limiter keys off `X-Real-IP`, because without it every client
+shares the proxy's bucket and one active dashboard locks everyone out.
+
+Static files are mounted last, at `/`, so `/api/*` and `/health` keep winning
+against the SPA catch-all.
+
+### Interception path
+
+`POST /api/v1/intercept` is the core of the system. Order of operations:
+
+1. **Semantic guardrail runs first.** Regex pattern sets for prompt injection,
+   jailbreak and exfiltration attempts, each carrying a hand-tuned confidence.
+   A proximity-based discount suppresses the common false positive where text
+   *discusses* injection rather than attempting it. If the guard blocks it
+   short-circuits: outcome DENY, rule `SEMANTIC-GUARD`, risk Critical, and it
+   still writes an audit entry. The policy engine never runs.
+2. **Policy evaluation**, wrapped in try/except. Any exception becomes DENY at
+   Critical risk.
+3. **Approval item created** on ESCALATE only.
+4. **Audit entry written for every outcome**, PERMIT included. No path through
+   this endpoint skips the audit write.
+5. **WebSocket broadcast** so connected dashboards update without polling.
+
+### Fail-closed behaviour
+
+Four independent points, all real:
+
+| Condition | Result |
+|---|---|
+| No policy rule matches the action | DENY, risk Medium, "denied by default" |
+| Policy engine raises | DENY, risk Critical |
+| Policy YAML missing at startup | rules stay empty, so everything hits the no-match DENY |
+| No valid API key or JWT | 401, request never reaches policy |
+
+The system defaults to refusing rather than allowing.
+
+### Policy engine
+
+Rules load from `backend/policies.yaml` (8 rules) via the `POLICY_CONFIG` setting.
+A further 10 pre-built rules ship in `rule_library.yaml` and can be imported into
+the database through the API, which is what populates the Policy Rules screen.
+
+**Known limitation:** rule `conditions` are evaluated by a keyword matcher, not a
+full expression parser. Complex boolean conditions are not reliably evaluated. This
+is recorded against FR-02 in the requirements traceability matrix.
+
+### Audit chain
+
+Append-only and hash-chained. Each entry's hash is SHA-256 over a preimage of
+`entry_id + timestamp + agent_id + action_type + outcome + payload_hash + prev_hash`,
+where `payload_hash` is itself a SHA-256 of the masked payload. The chain starts
+from a fixed genesis hash.
+
+Appends are serialised behind an `asyncio.Lock`. This is not incidental: two
+concurrent intercepts could previously both read the same chain head and both
+append to it, forking the log. `GET /api/v1/audit/verify` re-walks the chain
+server-side and recomputes every hash.
+
+The guarantee is **tamper-evident, not tamper-proof.** Anyone with database access
+can still delete rows. What they cannot do is delete them without breaking the
+chain, and verification surfaces that. Append-only is enforced at application
+level; there is no database trigger.
+
+### Authentication and access control
+
+JWT bearer tokens for users, bcrypt for password hashing (pinned to 4.0.1, because
+passlib probes the backend with an over-length string that bcrypt 4.1+ raises on
+rather than truncating, which broke every login on a clean install).
+
+Three roles: Administrator, Analyst, Viewer. Every endpoint carries an auth
+dependency; the role constants live in `backend/api/auth.py`. Agent-facing
+endpoints accept either an `X-API-Key` or a JWT via the `agent_or_user` dependency,
+because agents cannot perform the login flow.
+
+Payloads are masked before storage. Masking covers top-level keys only, which is
+recorded as a limitation.
+
+## Data model
+
+PostgreSQL 16, accessed asynchronously through SQLAlchemy 2.0 with asyncpg.
+Alembic manages migrations. Seven tables: `audit_log`, `approval_queue`,
+`policy_rules`, `users`, `api_keys`, `scheduled_reports`, `report_exports`.
+
+Redis 7 backs rate limiting and transient state.
+
+A background scheduler task starts with the application and drives scheduled
+report generation.
 
 ## Deployment
-- Docker Compose is used for local development (Postgres + Redis).
-- Production target is Azure App Service.
+
+**Production is Docker Compose on an Azure VM**, not a managed platform. Three
+services from `docker-compose.azure.yml`:
+
+- `postgres` (postgres:16-alpine) with a named volume
+- `redis` (redis:7-alpine)
+- `app`, built from `infra/docker/Dockerfile.azure`, published `80:8000`
+
+The app image is a two-stage build. Stage one runs `npm ci` and `vite build`;
+stage two installs the Python dependencies and copies the built frontend in as
+`frontend_dist/`, which FastAPI serves. One image, one container, no nginx.
+
+Configuration is entirely environment variables (`DATABASE_URL`, `REDIS_URL`,
+`SECRET_KEY`, `AGENT_API_KEY`, `POLICY_CONFIG`, `RULE_LIBRARY`), read from a `.env`
+that is not in the repository. That makes the secrets externalisable to a secret
+manager without code changes.
+
+Deployment is a pull-and-rebuild script on the VM, triggered over SSH by a GitHub
+Actions workflow. The CI deploy key is pinned to a forced command in the VM's
+`authorized_keys`, so it can run the deploy script and nothing else.
+
+## Non-functional characteristics
+
+| Concern | How it is addressed |
+|---|---|
+| Latency | WebSocket push rather than polling; sub-second dashboard updates |
+| Integrity | SHA-256 hash-chained audit with server-side verification |
+| Access control | JWT + bcrypt + RBAC on every endpoint |
+| Confidentiality | PII masking on stored payloads (top-level keys) |
+| Availability under load | Rate limiting, 60/min general and 10/min auth |
+| Failure mode | Fail-closed at four independent points |
+
+## Known gaps
+
+Recorded here rather than only in the traceability matrix, because they are
+architectural rather than feature-level:
+
+- Policy conditions are keyword-matched, not parsed (FR-02).
+- Approval SLA expiry is evaluated lazily on read; there is no background expiry
+  worker (FR-05).
+- PII masking covers top-level payload keys only.
+- Audit append-only is enforced in the application, not by a database constraint.
+- CORS origins are still the development list.
