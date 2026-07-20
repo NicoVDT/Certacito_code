@@ -1,0 +1,37 @@
+# Deploy to the Azure VM (FR-07).
+# Pushes to main pull + rebuild on the box. Needs three secrets:
+#   DEPLOY_HOST  - vm public ip
+#   DEPLOY_USER  - ssh user on the vm
+#   DEPLOY_KEY   - private half of the ci deploy key
+# The matching public key is pinned to a forced command in the vm's
+# authorized_keys, so this key cannot run anything except the deploy script.
+#
+# Was targetting App Service originally - we run plain docker compose on a vm,
+# so the old publish-profile job could never have worked.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vm
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # flip the AZURE_DEPLOY_ENABLED repo variable to stop deploys in a hurry
+    if: ${{ vars.AZURE_DEPLOY_ENABLED == 'true' }}
+    steps:
+      - name: Deploy over ssh
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          # whatever we send is ignored, the vm forces the deploy script
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" deploy

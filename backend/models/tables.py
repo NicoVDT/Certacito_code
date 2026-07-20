@@ -23,9 +23,40 @@ class RoleDB(str, enum.Enum):
     Viewer = "Viewer"
 
 
-# TODO: AuditLog
+class AuditLog(Base):
+    __tablename__ = "audit_log"
 
-# TODO: ApprovalQueue
+    id = Column(String, primary_key=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    agent_id = Column(String, nullable=False)
+    action_type = Column(String, nullable=False)
+    policy_rule = Column(String, nullable=True)
+    policy_desc = Column(String, nullable=True)
+    risk_level = Column(String, nullable=False)
+    outcome = Column(String, nullable=False)
+    payload_masked = Column(Text, nullable=True)  # PII-masked version of the payload
+    payload_hash = Column(String, nullable=False)
+    prev_hash = Column(String, nullable=False)
+    entry_hash = Column(String, nullable=False)
+    session_id = Column(String, nullable=True)
+
+
+class ApprovalQueue(Base):
+    __tablename__ = "approval_queue"
+
+    id = Column(String, primary_key=True)
+    agent_id = Column(String, nullable=False)
+    action_type = Column(String, nullable=False)
+    action_desc = Column(Text, nullable=True)
+    risk_level = Column(String, nullable=False)
+    policy_rule = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    sla_deadline = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String, default="pending")
+    reviewer = Column(String, nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    payload_masked = Column(Text, nullable=True)
+
 
 class PolicyRuleDB(Base):
     __tablename__ = "policy_rules"
@@ -54,8 +85,40 @@ class User(Base):
     is_active = Column(Boolean, default=True)
 
 
-# TODO: ApiKeyDB
+class ApiKeyDB(Base):
+    __tablename__ = "api_keys"
 
-# TODO: ScheduledReportDB
+    id = Column(String, primary_key=True)
+    label = Column(String, nullable=False)
+    key_hash = Column(String, nullable=False)  # sha256 of the raw key - raw shown once, never stored
+    prefix = Column(String, nullable=False)  # short visible fragment eg ck_live_3f8a, for the masked display
+    environment = Column(String, default="Production")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    created_by = Column(String, nullable=True)
+    revoked = Column(Boolean, default=False)
 
-# TODO: ReportExportDB
+
+class ScheduledReportDB(Base):
+    __tablename__ = "scheduled_reports"
+
+    id = Column(String, primary_key=True)
+    frequency = Column(String, nullable=False)  # daily, weekly, monthly
+    recipient = Column(String, nullable=False)
+    next_run = Column(DateTime(timezone=True), nullable=False)
+    last_sent = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String, default="Active")  # Active, Paused
+    created_by = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ReportExportDB(Base):
+    __tablename__ = "report_exports"
+
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    generated_by = Column(String, nullable=False)
+    generated_at = Column(DateTime(timezone=True), server_default=func.now())
+    format = Column(String, nullable=False)  # PDF or CSV
+    size_bytes = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)  # the actual export body, stored inline - no file volume to lose it to

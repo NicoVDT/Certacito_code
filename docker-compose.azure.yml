@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: certacito
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: certacito
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U certacito"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.azure
+    restart: unless-stopped
+    ports:
+      - "80:8000"
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://certacito:${POSTGRES_PASSWORD}@postgres:5432/certacito"
+      REDIS_URL: "redis://redis:6379/0"
+      SECRET_KEY: "${SECRET_KEY}"
+      AGENT_API_KEY: "${AGENT_API_KEY}"
+      POLICY_CONFIG: "/app/backend/policies.yaml"
+      RULE_LIBRARY: "/app/backend/rule_library.yaml"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

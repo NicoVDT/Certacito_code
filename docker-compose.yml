@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: certacito
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-certacito}
+      POSTGRES_DB: certacito
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U certacito"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://certacito:certacito@postgres:5432/certacito"
+      SECRET_KEY: "${SECRET_KEY:-dev-change-this-in-production}"
+      POLICY_CONFIG: "/app/backend/policies.yaml"
+      RULE_LIBRARY: "/app/backend/rule_library.yaml"
+      AGENT_API_KEY: "${AGENT_API_KEY:-dev-agent-key}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: "http://localhost:8000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
