@@ -1,88 +1,117 @@
 # Azure Deployment Runbook (FR-07)
 
-How the staging system moves to Azure. Written so any group member can execute it
-once the Azure subscription (GitHub Student Pack credit) is active.
+How the system is deployed to Azure. This describes the running production
+deployment, not a plan.
 
-## Target shape
+## What it actually runs on
 
-- **One Azure Web App for Containers** running `infra/docker/Dockerfile.azure`
-  (FastAPI serves the built frontend, so no second app and no nginx).
-- **Azure Database for PostgreSQL Flexible Server** (burstable B1ms is plenty).
-- **GitHub Actions** builds the image to GHCR and deploys on every push to main
-  (`.github/workflows/deploy.yml`, gated behind the `AZURE_DEPLOY_ENABLED` var).
-- **Custom domain** + App Service managed certificate (TLS).
-- **Key Vault** holds `SECRET_KEY`, `AGENT_API_KEY`, DB password; the web app
-  reads them via Key Vault references so nothing secret sits in app settings.
+A single Azure VM, `certacito-vm`, Standard_B2ls_v2 (2 vCPU / 4 GiB), Ubuntu 24.04
+LTS, in `australiaeast`. Public IP **20.92.93.30**, admin user `azureuser`, SSH by
+key only. NSG allows 22, 80 and 443.
 
-## One-time setup (az cli)
+The whole stack is Docker Compose on that one box. There is no App Service, no
+managed database and no Key Vault. That was the original plan and it was dropped:
+a VM was cheaper against student credit, and it let us host the governed agent
+alongside the platform, which the demo needs.
 
-```bash
-az login
-az group create -n certacito-rg -l australiaeast
+### Services
 
-# postgres
-az postgres flexible-server create -g certacito-rg -n certacito-db \
-  --sku-name Standard_B1ms --tier Burstable --version 16 \
-  --admin-user certacito --admin-password '<generate>' \
-  --public-access 0.0.0.0   # azure-services-only access
+`docker-compose.azure.yml`, three containers:
 
-# key vault
-az keyvault create -g certacito-rg -n certacito-kv
-az keyvault secret set --vault-name certacito-kv -n secret-key --value '<generate>'
-az keyvault secret set --vault-name certacito-kv -n agent-api-key --value '<generate>'
-az keyvault secret set --vault-name certacito-kv -n db-password --value '<same as above>'
+| Service | Image | Notes |
+|---|---|---|
+| `postgres` | postgres:16-alpine | named volume `pgdata`, healthcheck gates the app |
+| `redis` | redis:7-alpine | rate limiting, transient state |
+| `app` | built from `infra/docker/Dockerfile.azure` | published `80:8000` |
 
-# web app (container)
-az appservice plan create -g certacito-rg -n certacito-plan --is-linux --sku B1
-az webapp create -g certacito-rg -p certacito-plan -n certacito-app \
-  --deployment-container-image-name ghcr.io/<owner>/certacito:latest
-az webapp identity assign -g certacito-rg -n certacito-app
-az keyvault set-policy -n certacito-kv --secret-permissions get list \
-  --object-id <principal id from previous command>
+`app` is a two-stage image. Stage one runs `npm ci` then `vite build`; stage two
+installs the Python dependencies and copies the built frontend in as
+`frontend_dist/`, which FastAPI serves at `/`. One container serves both the API
+and the SPA, so there is no nginx and no second app.
 
-az webapp config appsettings set -g certacito-rg -n certacito-app --settings \
-  DATABASE_URL='postgresql+asyncpg://certacito:@Microsoft.KeyVault(SecretUri=...)@certacito-db.postgres.database.azure.com:5432/certacito' \
-  SECRET_KEY='@Microsoft.KeyVault(SecretUri=https://certacito-kv.vault.azure.net/secrets/secret-key/)' \
-  AGENT_API_KEY='@Microsoft.KeyVault(SecretUri=https://certacito-kv.vault.azure.net/secrets/agent-api-key/)' \
-  WEBSITES_PORT=8000
-```
+### Configuration
 
-## Wire up CI deploy
+`~/certacito/.env` on the VM, chmod 600, not in the repository. It holds
+`SECRET_KEY`, `AGENT_API_KEY` and `POSTGRES_PASSWORD`; `DATABASE_URL` and
+`REDIS_URL` are composed in the compose file. These are freshly generated values,
+deliberately not the ones used on the staging container.
 
-1. Repo Settings -> Secrets and variables -> Actions:
-   - secret `AZURE_WEBAPP_NAME` = `certacito-app`
-   - secret `AZURE_WEBAPP_PUBLISH_PROFILE` = contents of the publish profile
-     (Web App overview -> Get publish profile)
-   - variable `AZURE_DEPLOY_ENABLED` = `true`
-2. Push to main. The workflow builds `Dockerfile.azure`, pushes to GHCR and
-   deploys the sha-tagged image.
+Because every secret is already an environment variable, moving to a secret
+manager later is a config change rather than a code change.
 
-## Domain + TLS
+## Deploying
+
+`infra/scripts/deploy-vm.sh` on the VM does the whole thing:
 
 ```bash
-az webapp config hostname add -g certacito-rg --webapp-name certacito-app \
-  --hostname app.<our-domain>
-# then: App Service -> Custom domains -> Add managed certificate (free) -> bind
+git fetch --quiet origin main
+git reset --quiet --hard origin/main
+[ -f .env ] || { echo "no .env on this box, refusing to deploy"; exit 1; }
+docker compose -f docker-compose.azure.yml up -d --build
+# then polls /health for up to 60s before reporting success
 ```
 
-DNS at the registrar: CNAME `app` -> `certacito-app.azurewebsites.net` plus the
-TXT verification record Azure shows.
+The `.env` guard matters: `git reset --hard` would otherwise be one typo away from
+deploying a box with no secrets.
 
-## Post-deploy checklist
+### From CI
 
-- `https://app.<domain>/health` returns ok
-- first visit bootstraps the admin account (register is open only for user #1)
-- run the healthcare demo scenario, confirm audit entries + verify chain
-- hooks live at /usr/local/bin/certacito-{hook,exec-gate} on the vm, key in /etc/certacito-agent.env
-- lock the staging box back to tailnet-only
+`.github/workflows/deploy.yml` SSHes in and runs it. Two keys are involved, in
+opposite directions, which is the easy thing to get confused:
 
-## Agent interception on the vm
+| Key | Private half lives | Direction |
+|---|---|---|
+| `~/.ssh/gh_projcert` | on the VM | VM pulls from GitHub (repo deploy key, read-only) |
+| `DEPLOY_KEY` secret | in GitHub Actions | GitHub SSHes into the VM |
 
-The agent is agy (antigravity CLI) driven by openclaw, so openclaw's own
-`shellCommandPrefix` is no use here - agy owns the tool loop and runs commands
-itself. What does work is agy's permission layer: it auto-denies any command
-without a matching allow-rule, so allowing exactly one binary leaves the gate
-as the only route to a shell.
+The CI key is pinned to a forced command in the VM's `authorized_keys`:
+
+```
+command="/home/azureuser/certacito/infra/scripts/deploy-vm.sh",no-agent-forwarding,no-port-forwarding,no-pty
+```
+
+Whatever the runner sends is ignored; the VM forces the deploy script. If that
+secret leaked, the worst it can do is redeploy main.
+
+Repo settings needed: secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY`, and
+variable `AZURE_DEPLOY_ENABLED=true`. Flipping the variable to `false` stops
+deploys without touching the workflow.
+
+**Note:** GitHub scopes deploy keys globally, so the same public key cannot be
+registered on two repositories. Moving the repo means minting a new pair on the VM.
+
+## The governed agent
+
+The OpenClaw gateway runs on the VM as a host process on port 18789, alongside the
+containers. It is reached through Caddy on 443 rather than directly, because the
+control UI refuses to run outside a secure context, so plain `http://<ip>:18789`
+will never connect in a browser.
+
+`/etc/caddy/Caddyfile`:
+
+```
+{
+	http_port 8080          # port 80 belongs to the app; ACME uses tls-alpn on 443
+}
+
+https://20-92-93-30.nip.io {
+	basic_auth { ... }
+	reverse_proxy localhost:18789
+}
+```
+
+`nip.io` is wildcard DNS that resolves the hostname straight back to the IP, which
+gets a real Let's Encrypt certificate without owning a domain. **Basic auth sits in
+front of it**, added because the site is reachable from the open internet and the
+gateway's own token travels in a URL query string.
+
+### Interception on the agent side
+
+The agent is agy (Antigravity CLI) driven by OpenClaw, so OpenClaw's own
+`shellCommandPrefix` is no use here: agy owns the tool loop and runs commands
+itself. What works is agy's permission layer, which auto-denies any command
+without a matching allow-rule. Allowing exactly one binary leaves the gate as the
+only route to a shell.
 
 `~/.agy-home/.gemini/antigravity-cli/settings.json`:
 
@@ -100,19 +129,32 @@ certacito-exec-gate curl .../patient/...  -> DENY,  blocked, audit RULE-001
 cat /etc/passwd (raw, no gate)            -> auto-denied by agy, never ran
 ```
 
-The last line is the one that matters - the agent cannot route around the gate,
-it just loses the ability to run anything at all.
+The last line is the one that matters. The agent cannot route around the gate; it
+just loses the ability to run anything at all.
 
 `CERTACITO_API_KEY` has to be in the agent's env (`/etc/certacito-agent.env`),
-otherwise the hook fails closed and denies everything, which looks like a
-policy bug but isn't.
+otherwise the hook fails closed and denies everything, which looks like a policy
+bug but isn't.
 
-## Notes
+## Post-deploy checklist
 
-- The websocket path `/api/v1/ws/live` works on App Service out of the box
-  (web sockets toggle is on by default for Linux containers; verify under
-  Configuration -> General settings if the LIVE badge stays grey).
-- Migrations: the app runs `init_db()` on startup; Alembic against the Azure DB
-  for schema changes after that.
-- Rate limiter is in-memory per instance - fine on one B1 instance, revisit
-  before scaling out.
+- `http://20.92.93.30/health` returns `{"status":"ok"}`
+- log in, confirm the dashboard populates and the LIVE badge is green
+- run the four demo prompts, confirm PERMIT / DENY / DENY / ESCALATE
+- open the audit log and run **Verify chain**
+- confirm the agent console prompts for basic auth
+
+## Known gaps and gotchas
+
+- **No TLS on the platform itself.** Port 80 is plain HTTP; only the agent console
+  is behind Caddy on 443. A custom domain plus a certificate is outstanding.
+- **The VM has a daily auto-shutdown** to protect student credit. If the site is
+  unreachable, check the VM is started before debugging anything else.
+- Migrations: the app runs `init_db()` on startup; use Alembic against the VM's
+  Postgres for schema changes after that.
+- The rate limiter is in-memory per instance. Fine on one box, revisit before
+  scaling out.
+- `bcrypt` is pinned to 4.0.1. Unpinning it breaks every login on a clean install,
+  because passlib probes the backend with an over-length string that 4.1+ raises on.
+- The admin bootstrap only applies to the first registered account. Register is
+  admin-only once any user exists.
