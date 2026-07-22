@@ -43,9 +43,7 @@ async def verify_audit_chain(
 ):
     """check the hash chain integrity of the audit log"""
     svc = AuditService(db)
-    entries = await svc.get_entries(limit=1000)
-    # need to reverse so oldest is first for chain verification
-    entries.reverse()
-    valid = await svc.verify_chain(entries)
-    # print(f"[debug] chain valid={valid} entries={len(entries)}")
-    return {"chain_valid": valid, "entries_checked": len(entries)}
+    # walks the whole log from genesis, not just the last page of it - checking
+    # a window that doesn't start at genesis can't tell you the chain is intact
+    valid, checked, bad_id = await svc.verify_full_chain()
+    return {"chain_valid": valid, "entries_checked": checked, "first_bad_entry": bad_id}
