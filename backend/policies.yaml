@@ -1,0 +1,166 @@
+# Certacito.ai Policy Rules Configuration
+# These live outside the model - can't be jailbroken or talked around
+# Version controlled via git
+
+# the named sets the IN / NOT IN conditions below refer to. these were
+# referenced by the rules from the start but never actually defined anywhere,
+# so every membership test silently passed - which meant RULE-005 permitted
+# any tool at all and RULE-008 permitted reads of restricted tables.
+lists:
+  approved_tools:
+    - calculator
+    - search
+    - letter_generator
+    - summariser
+    - appointment_lookup
+  approved_vendors:
+    - api.partner.com
+    - api.medicare.gov.au
+  approved_domains:
+    - health.nsw.gov.au
+    - clinic.local
+    - gp-office.local
+  restricted_tables:
+    - patients
+    - patient_records
+    - billing
+    - credentials
+  restricted_datasets:
+    - patient_records
+    - claims_database
+    - medicare_records
+
+rules:
+  - id: "RULE-001"
+    name: "Out-of-scope data access block"
+    action_type: "data_access"
+    risk_threshold: "Critical"
+    default_outcome: "DENY"
+    # was "session_scope != target_dataset" - nothing ever sent session_scope
+    # so it could never be evaluated. checks the dataset against the restricted
+    # set instead, which is what the rule was meant to catch
+    conditions: "target_dataset IN restricted_datasets"
+    reg_tag: "Privacy Act 1988"
+    active: true
+    version: 4
+
+  - id: "RULE-002"
+    name: "Unsanctioned external call block"
+    action_type: "external_call"
+    risk_threshold: "High"
+    default_outcome: "DENY"
+    conditions: "api_domain NOT IN approved_vendors"
+    reg_tag: "ISO 27001"
+    active: true
+    version: 2
+
+  - id: "RULE-003"
+    name: "High-volume file write escalation"
+    action_type: "file_write"
+    risk_threshold: "Medium"
+    default_outcome: "ESCALATE"
+    conditions: "writes_per_min > 100"
+    reg_tag: "SOC 2 Type II"
+    active: true
+    version: 4
+
+  - id: "RULE-004"
+    name: "Prompt injection detection"
+    action_type: "prompt_content"
+    risk_threshold: "Critical"
+    default_outcome: "DENY"
+    conditions: "input MATCHES injection_patterns"
+    reg_tag: "OWASP LLM Top 10"
+    active: true
+    version: 5
+
+  - id: "RULE-005"
+    name: "Approved tool invocation permit"
+    action_type: "tool_invoke"
+    risk_threshold: "Low"
+    default_outcome: "PERMIT"
+    conditions: "tool_id IN approved_tools"
+    reg_tag: "Internal Policy"
+    active: true
+    version: 1
+
+  - id: "RULE-006"
+    name: "External email send escalation"
+    action_type: "email_send"
+    risk_threshold: "High"
+    # escalate rather than deny - a referral to an outside specialist is a
+    # normal thing to do, it just needs a human to sign it off (FR-05)
+    default_outcome: "ESCALATE"
+    conditions: "recipient_domain NOT IN approved_domains"
+    reg_tag: "ASD Essential 8"
+    active: true
+    version: 3
+
+  - id: "RULE-007"
+    name: "Sensitive credential access log"
+    action_type: "credential_access"
+    risk_threshold: "Critical"
+    default_outcome: "ESCALATE"
+    # the action_type already scopes this to credential access - the old
+    # "resource_type == credential" condition referred to a field nothing sends,
+    # and the rule was left inactive so credential access got no rule at all
+    conditions: null
+    reg_tag: "NIST CSF"
+    active: true
+    version: 2
+
+  - id: "RULE-008"
+    name: "Database schema read permit"
+    action_type: "db_read"
+    risk_threshold: "Low"
+    default_outcome: "PERMIT"
+    conditions: "operation == read AND table NOT IN restricted_tables"
+    reg_tag: "Internal Policy"
+    active: true
+    version: 1
+
+  - id: "RULE-009"
+    name: "Sanctioned vendor call permit"
+    action_type: "external_call"
+    risk_threshold: "Low"
+    default_outcome: "PERMIT"
+    # without this the vendor allowlist has no permit path - RULE-002 denies
+    # the unapproved ones and everything else falls through to the default deny
+    conditions: "api_domain IN approved_vendors"
+    reg_tag: "ISO 27001"
+    active: true
+    version: 1
+
+  # the three below are the permit side of RULE-006 / RULE-004 / RULE-001.
+  # without them ordinary traffic - an internal email, a normal prompt, a read
+  # of a non-restricted dataset - matches no rule at all and gets caught by the
+  # default deny, which makes the engine look like it blocks everything.
+  - id: "RULE-010"
+    name: "Internal recipient email permit"
+    action_type: "email_send"
+    risk_threshold: "Low"
+    default_outcome: "PERMIT"
+    conditions: "recipient_domain IN approved_domains"
+    reg_tag: "ASD Essential 8"
+    active: true
+    version: 1
+
+  - id: "RULE-011"
+    name: "Clean prompt content permit"
+    action_type: "prompt_content"
+    risk_threshold: "Low"
+    default_outcome: "PERMIT"
+    conditions: "input NOT MATCHES injection_patterns"
+    reg_tag: "OWASP LLM Top 10"
+    active: true
+    version: 1
+
+  - id: "RULE-012"
+    name: "In-scope dataset access permit"
+    action_type: "data_access"
+    risk_threshold: "Low"
+    default_outcome: "PERMIT"
+    conditions: "target_dataset NOT IN restricted_datasets"
+    reg_tag: "Privacy Act 1988"
+    active: true
+    version: 1
