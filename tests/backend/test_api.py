@@ -83,7 +83,9 @@ def test_intercept_permit():
     r = httpx.post(f"{BASE}/api/v1/intercept", json={
         "agent_id": "AGT-test",
         "action_type": "tool_invoke",
-        "payload": {"tool": "calc"},
+        # has to be a tool thats actually on the approved list now - "calc"
+        # only passed before because the IN check never really ran
+        "payload": {"tool": "calculator"},
     }, headers=agent_headers())
     assert r.status_code == 200
     assert r.json()["outcome"] == "PERMIT"
