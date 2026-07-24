@@ -88,20 +88,35 @@ The system defaults to refusing rather than allowing.
 
 ### Policy engine
 
-Rules load from `backend/policies.yaml` (8 rules) via the `POLICY_CONFIG` setting.
+Rules load from `backend/policies.yaml` (12 rules) via the `POLICY_CONFIG` setting.
 A further 10 pre-built rules ship in `rule_library.yaml` and can be imported into
 the database through the API, which is what populates the Policy Rules screen.
 
-**Known limitation:** rule `conditions` are evaluated by a keyword matcher, not a
-full expression parser. Complex boolean conditions are not reliably evaluated. This
-is recorded against FR-02 in the requirements traceability matrix.
+Conditions are parsed, not keyword-matched. The parser handles `==`, `!=`, `>`,
+`IN`, `NOT IN`, `MATCHES`, `NOT MATCHES` and `AND`, resolved against named sets
+(`approved_tools`, `approved_vendors`, `approved_domains`, `restricted_tables`,
+`restricted_datasets`) defined in the same file.
+
+Where a condition cannot be resolved the rule **does not match**, and the request
+falls through to the default deny. That direction is deliberate: unresolvable
+conditions were previously treated as satisfied, which on a *permit* rule meant
+allowing exactly the thing the rule existed to gate.
+
+**Known limitation:** `OR` is not supported.
 
 ### Audit chain
 
-Append-only and hash-chained. Each entry's hash is SHA-256 over a preimage of
-`entry_id + timestamp + agent_id + action_type + outcome + payload_hash + prev_hash`,
-where `payload_hash` is itself a SHA-256 of the masked payload. The chain starts
+Append-only and hash-chained. Each entry's hash is SHA-256 over a preimage built
+from every stored column: `entry_id`, `timestamp`, `agent_id`, `action_type`,
+`outcome`, `risk_level`, `policy_rule`, `policy_desc`, a `payload_hash` (itself a
+SHA-256 of the masked payload), and the previous entry's hash. The chain starts
 from a fixed genesis hash.
+
+Covering every column matters. The hash previously covered 7 of the 12 stored
+fields, so `risk_level` or the masked payload could be rewritten without breaking
+the chain: a Critical could be dropped to Low and verification still reported
+valid. `GET /api/v1/audit/verify` now walks from genesis and recomputes each hash
+rather than only comparing stored hashes to one another.
 
 Appends are serialised behind an `asyncio.Lock`. This is not incidental: two
 concurrent intercepts could previously both read the same chain head and both
@@ -176,7 +191,7 @@ Actions workflow. The CI deploy key is pinned to a forced command in the VM's
 Recorded here rather than only in the traceability matrix, because they are
 architectural rather than feature-level:
 
-- Policy conditions are keyword-matched, not parsed (FR-02).
+- Policy conditions do not support `OR` (FR-02).
 - Approval SLA expiry is evaluated lazily on read; there is no background expiry
   worker (FR-05).
 - PII masking covers top-level payload keys only.
