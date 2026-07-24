@@ -16,6 +16,7 @@ from backend.services.approval_service import ApprovalService
 from backend.services.semantic_guard import SemanticGuard
 from backend.api.websocket import broadcast_event
 from backend.api.auth import agent_or_user
+from backend.api.agents import record_agent_activity
 from backend.config import settings
 
 router = APIRouter()
@@ -67,6 +68,8 @@ async def intercept_action(
                 session_id=request.session_id,
             )
 
+            record_agent_activity(request.agent_id, blocked=True)
+
             return InterceptionResponse(
                 decision_id=f"DEC-{uuid.uuid4().hex[:8].upper()}",
                 outcome=outcome,
@@ -109,6 +112,10 @@ async def intercept_action(
         payload=request.payload,
         session_id=request.session_id,
     )
+
+    # bump the registry counters. this was written months ago and never
+    # actually wired up, so every agent sat on 0 actions / never seen
+    record_agent_activity(request.agent_id, blocked=(outcome == Outcome.deny))
 
     decision_id = f"DEC-{uuid.uuid4().hex[:8].upper()}"
 

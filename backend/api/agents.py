@@ -9,6 +9,13 @@ router = APIRouter()
 
 # in-memory agent registry for now
 # TODO: move to database if we need persistence across restarts
+#
+# only real agents belong in here. there used to be four others - a claims
+# agent, a support agent, a finance one and a suspended ops one - with made up
+# models and registration dates, so the registry showed five agents when we
+# have one. thats system state a marker can click into and it wasn't true.
+# the simulator still emits under mock ids, which is fine, thats what a
+# simulator is, but they don't get to appear here as registered agents.
 _agents: dict[str, dict] = {
     "AGT-openclaw-azure": {
         "id": "AGT-openclaw-azure",
@@ -19,54 +26,6 @@ _agents: dict[str, dict] = {
         "registered_at": "2026-06-25T13:00:00Z",
         "last_seen": None,
         "permissions": ["tool_invoke", "data_access", "file_write", "db_read"],
-        "total_actions": 0,
-        "blocked_actions": 0,
-    },
-    "AGT-claims-014": {
-        "id": "AGT-claims-014",
-        "name": "Claims Processing Agent",
-        "status": "active",
-        "model": "gpt-4",
-        "container": "external",
-        "registered_at": "2026-05-20T09:00:00Z",
-        "last_seen": None,
-        "permissions": ["data_access", "tool_invoke"],
-        "total_actions": 0,
-        "blocked_actions": 0,
-    },
-    "AGT-support-031": {
-        "id": "AGT-support-031",
-        "name": "Customer Support Agent",
-        "status": "active",
-        "model": "claude-sonnet",
-        "container": "external",
-        "registered_at": "2026-05-22T11:00:00Z",
-        "last_seen": None,
-        "permissions": ["prompt_content", "tool_invoke"],
-        "total_actions": 0,
-        "blocked_actions": 0,
-    },
-    "AGT-finance-004": {
-        "id": "AGT-finance-004",
-        "name": "Finance Automation Agent",
-        "status": "active",
-        "model": "gpt-4",
-        "container": "external",
-        "registered_at": "2026-05-18T14:00:00Z",
-        "last_seen": None,
-        "permissions": ["tool_invoke", "db_read", "external_call"],
-        "total_actions": 0,
-        "blocked_actions": 0,
-    },
-    "AGT-ops-009": {
-        "id": "AGT-ops-009",
-        "name": "Operations Agent",
-        "status": "suspended",
-        "model": "gpt-4",
-        "container": "external",
-        "registered_at": "2026-05-15T08:00:00Z",
-        "last_seen": None,
-        "permissions": ["file_write", "system_command"],
         "total_actions": 0,
         "blocked_actions": 0,
     },
