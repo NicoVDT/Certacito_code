@@ -20,19 +20,6 @@ interface Agent {
 }
 
 // fallback mock data if the api is unavailable
-const mockAgents: Agent[] = [
-  { id: "AGT-claims-014",    name: "Claims Processor",     status: "Active",    risk: "Critical", compliance: 74 },
-  { id: "AGT-research-002",  name: "Research Assistant",   status: "Active",    risk: "High",     compliance: 88 },
-  { id: "AGT-ops-009",       name: "Operations Agent",     status: "Active",    risk: "Medium",   compliance: 91 },
-  { id: "AGT-support-031",   name: "Support Bot",          status: "Active",    risk: "Critical", compliance: 81 },
-  { id: "AGT-finance-004",   name: "Finance Analyst",      status: "Active",    risk: "Low",      compliance: 98 },
-  { id: "AGT-health-018",    name: "Health Records Agent", status: "Suspended", risk: "High",     compliance: 62 },
-  { id: "AGT-analytics-007", name: "Analytics Engine",     status: "Active",    risk: "Medium",   compliance: 95 },
-  { id: "AGT-legal-022",     name: "Legal Reviewer",       status: "Active",    risk: "Low",      compliance: 99 },
-  { id: "AGT-hr-011",        name: "HR Assistant",         status: "Offline",   risk: "Low",      compliance: 97 },
-  { id: "AGT-infosec-003",   name: "Infosec Monitor",      status: "Active",    risk: "High",     compliance: 93 },
-];
-
 const statusConfig: Record<Status, { label: string; color: string; bg: string; dot: string }> = {
   Active:    { label: "Active",    color: GREEN,   bg: "#f0fdf4", dot: GREEN },
   Suspended: { label: "Suspended", color: AMBER,   bg: "#fff7ed", dot: AMBER },
@@ -151,7 +138,7 @@ function calcCompliance(agent: any): number {
 }
 
 export function AgentOverviewScreen({ onViewRegistry }: { onViewRegistry: (id: string) => void }) {
-  const [agents, setAgents] = useState<Agent[]>(mockAgents);
+  const [agents, setAgents] = useState<Agent[]>([]);
 
   // fetch real agents from the api
   useEffect(() => {

@@ -30,19 +30,6 @@ interface Agent {
   complianceScore: number;
 }
 
-const agentData: Agent[] = [
-  { id: "AGT-claims-014", name: "Claims Processor v2", type: "Claims Processing", status: "Active", riskTier: "Critical", decisionsToday: 47, violationsToday: 3, lastActivity: "2026-05-27 09:42", environment: "Production", model: "claude-sonnet-4-6", owner: "Claims Team", activeSince: "2025-11-15", assignedRules: ["RULE-001", "RULE-005"], complianceScore: 74 },
-  { id: "AGT-research-002", name: "Research Assistant", type: "Research", status: "Active", riskTier: "High", decisionsToday: 23, violationsToday: 1, lastActivity: "2026-05-27 08:37", environment: "Production", model: "claude-sonnet-4-6", owner: "Research Team", activeSince: "2025-12-01", assignedRules: ["RULE-002", "RULE-005"], complianceScore: 88 },
-  { id: "AGT-ops-009", name: "Operations Monitor", type: "Operations", status: "Active", riskTier: "Medium", decisionsToday: 18, violationsToday: 1, lastActivity: "2026-05-27 09:22", environment: "Production", model: "claude-haiku-4-5-20251001", owner: "Ops Team", activeSince: "2026-01-10", assignedRules: ["RULE-003", "RULE-005", "RULE-008"], complianceScore: 91 },
-  { id: "AGT-support-031", name: "Customer Support Bot", type: "Support", status: "Active", riskTier: "Critical", decisionsToday: 134, violationsToday: 1, lastActivity: "2026-05-27 08:58", environment: "Production", model: "claude-sonnet-4-6", owner: "Support Team", activeSince: "2025-10-20", assignedRules: ["RULE-004", "RULE-005"], complianceScore: 81 },
-  { id: "AGT-finance-004", name: "Finance Analyst", type: "Finance", status: "Active", riskTier: "Low", decisionsToday: 29, violationsToday: 0, lastActivity: "2026-05-27 08:34", environment: "Production", model: "claude-opus-4-7", owner: "Finance Team", activeSince: "2025-09-01", assignedRules: ["RULE-005", "RULE-008"], complianceScore: 98 },
-  { id: "AGT-health-018", name: "Health Records Agent", type: "Healthcare", status: "Suspended", riskTier: "High", decisionsToday: 0, violationsToday: 1, lastActivity: "2026-05-27 07:48", environment: "Production", model: "claude-sonnet-4-6", owner: "Health Team", activeSince: "2026-02-14", assignedRules: ["RULE-001", "RULE-006"], complianceScore: 62 },
-  { id: "AGT-analytics-007", name: "Data Analytics Engine", type: "Analytics", status: "Active", riskTier: "Medium", decisionsToday: 62, violationsToday: 0, lastActivity: "2026-05-27 09:38", environment: "Production", model: "claude-haiku-4-5-20251001", owner: "Analytics Team", activeSince: "2026-03-01", assignedRules: ["RULE-005", "RULE-008"], complianceScore: 95 },
-  { id: "AGT-legal-022", name: "Contract Reviewer", type: "Legal", status: "Active", riskTier: "Low", decisionsToday: 8, violationsToday: 0, lastActivity: "2026-05-27 07:15", environment: "Staging", model: "claude-opus-4-7", owner: "Legal Team", activeSince: "2026-04-15", assignedRules: ["RULE-005"], complianceScore: 99 },
-  { id: "AGT-hr-011", name: "HR Onboarding Bot", type: "Human Resources", status: "Offline", riskTier: "Low", decisionsToday: 0, violationsToday: 0, lastActivity: "2026-05-26 17:30", environment: "Staging", model: "claude-haiku-4-5-20251001", owner: "HR Team", activeSince: "2026-04-01", assignedRules: ["RULE-005"], complianceScore: 97 },
-  { id: "AGT-infosec-003", name: "Security Scanner", type: "InfoSec", status: "Active", riskTier: "High", decisionsToday: 15, violationsToday: 0, lastActivity: "2026-05-27 09:45", environment: "Production", model: "claude-sonnet-4-6", owner: "InfoSec Team", activeSince: "2025-08-01", assignedRules: ["RULE-001", "RULE-002", "RULE-003", "RULE-004", "RULE-006", "RULE-007"], complianceScore: 93 },
-];
-
 function riskColor(risk: RiskLevel) {
   if (risk === "Critical") return { bg: "#fef2f2", text: RED, border: "#fecaca" };
   if (risk === "High") return { bg: "#fff7ed", text: AMBER, border: "#fed7aa" };
@@ -89,7 +76,7 @@ function ComplianceBar({ score }: { score: number }) {
 }
 
 export function AgentRegistryScreen({ initialSelectedAgentId = null }: { initialSelectedAgentId?: string | null }) {
-  const [agents, setAgents] = useState(agentData);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [riskFilter, setRiskFilter] = useState("All");

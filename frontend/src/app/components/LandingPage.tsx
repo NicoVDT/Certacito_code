@@ -89,11 +89,13 @@ function Navbar({ onLogin }: { onLogin: () => void }) {
 }
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
-const liveFeedRows = [
-  { id: "AGT-claims-014", action: "data_access", outcome: "DENY", color: RED },
-  { id: "AGT-support-031", action: "prompt_content", outcome: "DENY", color: RED },
-  { id: "AGT-finance-004", action: "tool_invoke", outcome: "PERMIT", color: GREEN },
-  { id: "AGT-ops-009", action: "file_write", outcome: "ESCALATE", color: AMBER },
+// illustrative, not a feed - this page is public so it has no token to read
+// the real audit log with. labelled as an example on screen for that reason.
+const exampleFeedRows = [
+  { id: "AGT-example-01", action: "data_access", outcome: "DENY", color: RED },
+  { id: "AGT-example-01", action: "prompt_content", outcome: "DENY", color: RED },
+  { id: "AGT-example-02", action: "tool_invoke", outcome: "PERMIT", color: GREEN },
+  { id: "AGT-example-02", action: "file_write", outcome: "ESCALATE", color: AMBER },
 ];
 
 function Hero({ onLogin }: { onLogin: () => void }) {
@@ -133,10 +135,10 @@ function Hero({ onLogin }: { onLogin: () => void }) {
           <div style={{ background: "#132a52", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10 }}>
             <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: GREEN }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>Live decision feed</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>Example decisions</span>
             </div>
             <div>
-              {liveFeedRows.map(row => (
+              {exampleFeedRows.map(row => (
                 <div key={row.id} className="flex items-center justify-between px-4 py-2.5"
                   style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                   <div className="flex items-center gap-3">

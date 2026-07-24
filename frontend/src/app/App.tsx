@@ -118,38 +118,6 @@ interface PolicyVersion {
 
 // mock data - real stuff comes from the api, this is just the fallback so the
 // screens aren't empty when the backend is down during demo
-const auditData: AuditEntry[] = [
-  { id: "AUC-1007", timestamp: "2026-05-27 09:42:18", agentId: "AGT-claims-014", actionType: "data_access", policyRule: "RULE-001", policyDesc: "Block out-of-scope data access", riskLevel: "Critical", outcome: "DENY" },
-  { id: "AUC-1006", timestamp: "2026-05-27 08:37:04", agentId: "AGT-research-002", actionType: "external_call", policyRule: "RULE-002", policyDesc: "Block unsanctioned external calls", riskLevel: "High", outcome: "DENY" },
-  { id: "AUC-1005", timestamp: "2026-05-27 09:22:51", agentId: "AGT-ops-009", actionType: "file_write", policyRule: "RULE-003", policyDesc: "Escalate high-volume file writes", riskLevel: "Medium", outcome: "ESCALATE" },
-  { id: "AUC-1004", timestamp: "2026-05-27 08:58:33", agentId: "AGT-support-031", actionType: "prompt_content", policyRule: "RULE-004", policyDesc: "Block prompt injection patterns", riskLevel: "Critical", outcome: "DENY" },
-  { id: "AUC-1003", timestamp: "2026-05-27 08:34:10", agentId: "AGT-finance-004", actionType: "tool_invoke", policyRule: "RULE-005", policyDesc: "Permit approved tool invocations", riskLevel: "Low", outcome: "PERMIT" },
-  { id: "AUC-1002", timestamp: "2026-05-26 17:48:28", agentId: "AGT-health-018", actionType: "email_send", policyRule: "RULE-006", policyDesc: "Block external email from agent", riskLevel: "High", outcome: "DENY" },
-  { id: "AUC-1001", timestamp: "2026-05-26 15:19:45", agentId: "AGT-research-002", actionType: "external_call", policyRule: "RULE-002", policyDesc: "Block unsanctioned external calls", riskLevel: "Low", outcome: "PERMIT" },
-  { id: "AUC-1000", timestamp: "2026-05-26 14:02:11", agentId: "AGT-claims-014", actionType: "data_access", policyRule: "RULE-001", policyDesc: "Block out-of-scope data access", riskLevel: "Medium", outcome: "DENY" },
-  { id: "AUC-0999", timestamp: "2026-05-26 11:55:03", agentId: "AGT-ops-009", actionType: "file_write", policyRule: "RULE-003", policyDesc: "Escalate high-volume file writes", riskLevel: "High", outcome: "ESCALATE" },
-  { id: "AUC-0998", timestamp: "2026-05-26 10:30:47", agentId: "AGT-finance-004", actionType: "tool_invoke", policyRule: "RULE-005", policyDesc: "Permit approved tool invocations", riskLevel: "Low", outcome: "PERMIT" },
-];
-
-const initialQueueItems: QueueItem[] = [
-  { id: "AUD-4421", agentId: "AGT-claims-014", action: "Attempted data_access outside approved session scope - accessed medicare records for non-assigned claimant", riskLevel: "Critical", policyRule: "RULE-001", policyDesc: "Block out-of-scope data access", slaSeconds: 872, user: "j***@example.com", sessionStart: "2026-05-27 09:38:00" },
-  { id: "AUD-4418", agentId: "AGT-support-031", action: "Detected prompt injection pattern in user input - attempted jailbreak via role-play instruction override", riskLevel: "Critical", policyRule: "RULE-004", policyDesc: "Block prompt injection patterns", slaSeconds: 1540, user: "s***@example.com", sessionStart: "2026-05-27 08:55:00" },
-  { id: "AUD-4415", agentId: "AGT-research-002", action: "Initiated unsanctioned external_call to third-party API not on approved vendor list", riskLevel: "High", policyRule: "RULE-002", policyDesc: "Block unsanctioned external calls", slaSeconds: 2940, user: "r***@example.com", sessionStart: "2026-05-27 08:30:00" },
-  { id: "AUD-4410", agentId: "AGT-health-018", action: "Attempted email_send to external recipient with PII in payload - recipient not in approved domain list", riskLevel: "High", policyRule: "RULE-006", policyDesc: "Block external email from agent", slaSeconds: 4200, user: "h***@example.com", sessionStart: "2026-05-27 07:45:00" },
-  { id: "AUD-4408", agentId: "AGT-ops-009", action: "High-volume file_write burst - 847 writes in 3 minutes, exceeding threshold of 100/min", riskLevel: "High", policyRule: "RULE-003", policyDesc: "Escalate high-volume file writes", slaSeconds: 5760, user: "o***@example.com", sessionStart: "2026-05-27 07:20:00" },
-];
-
-const policyRules: PolicyRule[] = [
-  { id: "RULE-001", name: "Out-of-scope data access block", actionType: "data_access", riskThreshold: "Critical", defaultOutcome: "DENY", regTag: "Privacy Act 1988", active: true, lastModified: "2026-05-20", conditions: "session_scope != target_dataset", version: 3 },
-  { id: "RULE-002", name: "Unsanctioned external call block", actionType: "external_call", riskThreshold: "High", defaultOutcome: "DENY", regTag: "ISO 27001", active: true, lastModified: "2026-05-18", conditions: "api_domain NOT IN approved_vendors", version: 2 },
-  { id: "RULE-003", name: "High-volume file write escalation", actionType: "file_write", riskThreshold: "Medium", defaultOutcome: "ESCALATE", regTag: "SOC 2 Type II", active: true, lastModified: "2026-05-15", conditions: "writes_per_min > 100", version: 4 },
-  { id: "RULE-004", name: "Prompt injection detection", actionType: "prompt_content", riskThreshold: "Critical", defaultOutcome: "DENY", regTag: "OWASP LLM Top 10", active: true, lastModified: "2026-05-22", conditions: "input MATCHES injection_patterns", version: 5 },
-  { id: "RULE-005", name: "Approved tool invocation permit", actionType: "tool_invoke", riskThreshold: "Low", defaultOutcome: "PERMIT", regTag: "Internal Policy", active: true, lastModified: "2026-05-10", conditions: "tool_id IN approved_tools", version: 1 },
-  { id: "RULE-006", name: "External email send block", actionType: "email_send", riskThreshold: "High", defaultOutcome: "DENY", regTag: "ASD Essential 8", active: true, lastModified: "2026-05-19", conditions: "recipient_domain NOT IN approved_domains", version: 2 },
-  { id: "RULE-007", name: "Sensitive credential access log", actionType: "credential_access", riskThreshold: "Critical", defaultOutcome: "ESCALATE", regTag: "NIST CSF", active: false, lastModified: "2026-04-30", conditions: "resource_type == 'credential'", version: 1 },
-  { id: "RULE-008", name: "Database schema read permit", actionType: "db_read", riskThreshold: "Low", defaultOutcome: "PERMIT", regTag: "Internal Policy", active: true, lastModified: "2026-05-05", conditions: "operation == 'read' AND table NOT IN restricted_tables", version: 1 },
-];
-
 const versionHistory: Record<string, PolicyVersion[]> = {
   "RULE-001": [
     { version: 3, timestamp: "2026-05-20 14:32", author: "Domain Admin", changes: "Updated condition logic to include cross-dataset checks" },
@@ -174,23 +142,6 @@ const versionHistory: Record<string, PolicyVersion[]> = {
     { version: 1, timestamp: "2026-04-25 09:30", author: "Security Team", changes: "Initial rule creation" },
   ],
 };
-
-const lineChartData = [
-  { day: "Mon", decisions: 28, blocked: 9 },
-  { day: "Tue", decisions: 34, blocked: 14 },
-  { day: "Wed", decisions: 41, blocked: 18 },
-  { day: "Thu", decisions: 29, blocked: 8 },
-  { day: "Fri", decisions: 52, blocked: 22 },
-  { day: "Sat", decisions: 19, blocked: 6 },
-  { day: "Sun", decisions: 44, blocked: 12 },
-];
-
-const donutData = [
-  { name: "Low", value: 98, color: GREEN },
-  { name: "Medium", value: 72, color: GOLD },
-  { name: "High", value: 53, color: AMBER },
-  { name: "Critical", value: 24, color: RED },
-];
 
 // helpers - colours per risk / outcome so the badges stay consistent
 function riskColor(risk: RiskLevel) {
@@ -569,9 +520,9 @@ function LoginScreen({ onLogin, onBack }: { onLogin: (email: string, pwd: string
 // ── Dashboard ── the main screen, polls the api + ws for live-ish updates
 function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
   const [stats, setStats] = useState<any>(null);
-  const [liveAudit, setLiveAudit] = useState<AuditEntry[]>(auditData);
+  const [liveAudit, setLiveAudit] = useState<AuditEntry[]>([]);
   const [lastUpdate, setLastUpdate] = useState(new Date().toISOString().replace("T", " ").slice(0, 19));
-  const [trendData, setTrendData] = useState(lineChartData);
+  const [trendData, setTrendData] = useState<any[]>([]);
   const [violations, setViolations] = useState<any[]>([]);
 
   // fetch live stats from backend, fall back to mock numbers if api is down
@@ -643,11 +594,14 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
   }, []);
 
   // use live stats if available, otherwise defaults
-  const totalIntercepted = stats?.total_intercepted ?? 247;
-  const blocked = stats?.blocked ?? 89;
-  const criticalEvents = stats?.critical_events ?? 12;
-  const pendingApprovals = stats?.pending_approvals ?? 5;
-  const complianceScore = stats?.compliance_score ?? 87;
+  // these used to fall back to mock numbers (247 / 89 / 12 / 5 / 87) when
+  // stats hadnt loaded, so a hiccup showed made-up figures that looked real.
+  // zero is honest - if theres nothing there, show nothing there.
+  const totalIntercepted = stats?.total_intercepted ?? 0;
+  const blocked = stats?.blocked ?? 0;
+  const criticalEvents = stats?.critical_events ?? 0;
+  const pendingApprovals = stats?.pending_approvals ?? 0;
+  const complianceScore = stats?.compliance_score ?? 0;
 
   // build donut from live risk breakdown
   const liveDonut = stats?.risk_breakdown
@@ -657,7 +611,7 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
         { name: "High", value: stats.risk_breakdown.High, color: AMBER },
         { name: "Critical", value: stats.risk_breakdown.Critical, color: RED },
       ]
-    : donutData;
+    : [];
 
   return (
     <div className="flex-1 overflow-y-auto p-6" style={{ fontFamily: "Arial, sans-serif" }}>
@@ -722,7 +676,7 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
       <div className="grid grid-cols-3 gap-3 mb-4">
         {[
           { label: "Compliance Score", value: `${complianceScore}%`, sub: complianceScore > 80 ? "↑ healthy" : "↓ needs attention", color: GREEN, icon: <TrendingUp size={14} />, click: "reports" as Screen },
-          { label: "Active Agents", value: `${stats?.active_rules ?? 8} rules`, sub: "governance rules active", color: TEAL, icon: <Bot size={14} />, click: "agent-registry" as Screen },
+          { label: "Active Agents", value: `${stats?.active_rules ?? 0} rules`, sub: "governance rules active", color: TEAL, icon: <Bot size={14} />, click: "agent-registry" as Screen },
           { label: "SLA Adherence", value: pendingApprovals === 0 ? "100%" : "94%", sub: pendingApprovals > 0 ? `${pendingApprovals} awaiting review` : "all clear", color: NAVY, icon: <Activity size={14} />, click: "approval-queue" as Screen },
         ].map(sec => (
           <div key={sec.label}
@@ -894,7 +848,7 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
 function AuditLogScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [entries, setEntries] = useState<AuditEntry[]>(auditData);
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [riskFilter, setRiskFilter] = useState("All");
   const [outcomeFilter, setOutcomeFilter] = useState("All");
   const [actionFilter, setActionFilter] = useState("All");
@@ -1206,13 +1160,14 @@ function AuditLogScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
 
 // ─── Approval Queue ──────────────────────────────────────────────────────────
 function ApprovalQueueScreen() {
-  const [items, setItems] = useState(initialQueueItems);
+  const [items, setItems] = useState<QueueItem[]>([]);
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [selectedItem, setSelectedItem] = useState<QueueItem | null>(null);
   const [modal, setModal] = useState<{ item: QueueItem; action: "approve" | "deny" } | null>(null);
-  const [timers, setTimers] = useState<Record<string, number>>(() =>
-    Object.fromEntries(initialQueueItems.map(i => [i.id, i.slaSeconds]))
-  );
+  const [timers, setTimers] = useState<Record<string, number>>({});
+  // real recent actions for the selected agent, this panel used to render
+  // a hardcoded list that had nothing to do with whats actually happened
+  const [recentActions, setRecentActions] = useState<AuditEntry[]>([]);
 
   // load pending approvals from backend
   useEffect(() => {
@@ -1236,7 +1191,21 @@ function ApprovalQueueScreen() {
           setTimers(Object.fromEntries(mapped.map(i => [i.id, i.slaSeconds])));
         }
       } catch {
-        // keep mock items if api down
+        // nothing to show rather than something mock
+      }
+      try {
+        const audit = await api.getAuditLog(50);
+        setRecentActions((audit || []).map((e: any) => ({
+          id: e.id,
+          timestamp: (e.timestamp || "").replace("T", " ").slice(0, 19),
+          agentId: e.agent_id,
+          actionType: e.action_type,
+          risk: e.risk_level,
+          outcome: e.outcome,
+          rule: e.policy_rule,
+        })) as AuditEntry[]);
+      } catch {
+        setRecentActions([]);
       }
     };
     load();
@@ -1410,7 +1379,7 @@ function ApprovalQueueScreen() {
                 <div className="mb-4">
                   <div style={{ color: "#9ca3af", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", marginBottom: 6 }}>RECENT ACTIONS</div>
                   <div className="space-y-2">
-                    {auditData.filter(e => e.agentId === selectedItem.agentId).slice(0, 4).map(e => (
+                    {recentActions.filter(e => e.agentId === selectedItem.agentId).slice(0, 4).map(e => (
                       <div key={e.id} className="flex items-start gap-2 p-2 rounded" style={{ background: "#f8fafc" }}>
                         <div>
                           <div style={{ fontFamily: "Courier New, monospace", fontSize: 10, color: "#374151" }}>{e.actionType}</div>
@@ -1488,7 +1457,7 @@ function ApprovalQueueScreen() {
 
 // ─── Policy Rules ─────────────────────────────────────────────────────────────
 function PolicyRulesScreen() {
-  const [rules, setRules] = useState(policyRules);
+  const [rules, setRules] = useState<PolicyRule[]>([]);
   const [actionFilter, setActionFilter] = useState("All");
   const [editRule, setEditRule] = useState<PolicyRule | null>(null);
   const [editDraft, setEditDraft] = useState<PolicyRule | null>(null);
@@ -2056,18 +2025,9 @@ interface Notification {
   read: boolean;
 }
 
-const mockNotifications: Notification[] = [
-  { id: "n1", type: "critical", message: "AGT-claims-014 triggered a Critical DENY - out-of-scope data access", time: "2 min ago", read: false },
-  { id: "n2", type: "critical", message: "AGT-support-031 prompt injection attempt detected and blocked", time: "4 min ago", read: false },
-  { id: "n3", type: "warning", message: "AUD-4421 SLA expires in 12 minutes - action required", time: "11 min ago", read: false },
-  { id: "n4", type: "info", message: "Weekly compliance report delivered to nico.vdt@certacito.ai", time: "1 hr ago", read: true },
-  { id: "n5", type: "warning", message: "AGT-health-018 suspended by James Okafor", time: "2 hrs ago", read: true },
-  { id: "n6", type: "info", message: "RULE-004 updated to version 5 - new injection pattern signatures added", time: "3 hrs ago", read: true },
-];
-
 function TopHeader({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) => void }) {
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [search, setSearch] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -2082,6 +2042,23 @@ function TopHeader({ screen, setScreen }: { screen: Screen; setScreen: (s: Scree
       try {
         const approvals = await api.getPendingApprovals();
         setPendingCount(approvals.length);
+      } catch {}
+      // build the notification list out of what actually happened. this was a
+      // hardcoded array of six mock events - agents that don't exist, a
+      // report "delivered", someone called James Okafor suspending something.
+      try {
+        const audit = await api.getAuditLog(20);
+        const notable = (audit || [])
+          .filter((e: any) => e.outcome === "DENY" || e.outcome === "ESCALATE")
+          .slice(0, 6)
+          .map((e: any) => ({
+            id: e.id,
+            type: (e.risk_level === "Critical" ? "critical" : e.outcome === "ESCALATE" ? "warning" : "info") as Notification["type"],
+            message: `${e.agent_id} ${e.action_type} - ${e.outcome}${e.policy_rule ? ` (${e.policy_rule})` : ""}`,
+            time: (e.timestamp || "").replace("T", " ").slice(0, 19),
+            read: false,
+          }));
+        setNotifications(notable);
       } catch {}
     };
     check();
