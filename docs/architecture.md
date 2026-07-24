@@ -108,9 +108,15 @@ allowing exactly the thing the rule existed to gate.
 
 Append-only and hash-chained. Each entry's hash is SHA-256 over a preimage built
 from every stored column: `entry_id`, `timestamp`, `agent_id`, `action_type`,
-`outcome`, `risk_level`, `policy_rule`, `policy_desc`, a `payload_hash` (itself a
-SHA-256 of the masked payload), and the previous entry's hash. The chain starts
-from a fixed genesis hash.
+`outcome`, `risk_level`, `policy_rule`, `policy_desc`, `session_id`,
+`payload_masked`, a `payload_hash`, and the previous entry's hash. The preimage is
+sorted JSON rather than concatenated strings, so two different entries cannot
+produce the same one by shifting where a field ends. The chain starts from a fixed
+genesis hash.
+
+`payload_hash` is taken over the **raw** payload, before masking. That is
+deliberate - the integrity check then covers what the agent actually sent, not the
+redacted copy we display. The masked copy is covered separately as its own field.
 
 Covering every column matters. The hash previously covered 7 of the 12 stored
 fields, so `risk_level` or the masked payload could be rewritten without breaking
