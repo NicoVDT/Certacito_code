@@ -138,20 +138,9 @@ cannot be jailbroken or prompt-injected away. The engine is fail-closed:
 unknown actions are denied by default, engine errors deny, unreachable
 governance API means the agent-side hook denies too.
 
-Conditions are parsed properly now - see `backend/services/condition_parser.py`.
-The grammar covers `==`, `!=`, `>`, `<`, `>=`, `<=`, `IN`, `NOT IN`, `CONTAINS`,
-`NOT CONTAINS`, `MATCHES`, `NOT MATCHES`, `AND`, `OR`, `NOT` and parentheses.
-
-Evaluation is three-valued - true, false or unknown - because "we could not
-work this out" is not the same as "this is false". A missing payload field
-makes a term unknown, unknown propagates through `NOT`, and only a definite
-true matches. That is what keeps the engine fail-closed in both directions: an
-unevaluable condition can neither satisfy a DENY rule nor a PERMIT one, and
-negating something unevaluable cannot flip it to true.
-
-This replaced a substring matcher that had `CONTAINS` unimplemented (so every
-rule in `rule_library.yaml` using it silently never matched), evaluated `>=`
-as `float("= 100")`, and lowercased quoted literals.
+Known limitation (tracked in `docs/requirements-traceability.md`): rule
+`conditions` are currently a simplified keyword matcher, not a full
+expression parser. Matching is primarily on `action_type`.
 
 ## Documentation (A4 appendix set)
 

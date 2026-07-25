@@ -24,13 +24,13 @@ if not API_KEY:
 
 AGENTS = [
     "AGT-openclaw-azure",
-    "AGT-claims-014",
-    "AGT-support-031",
-    "AGT-finance-004",
-    "AGT-ops-009",
-    "AGT-health-018",
-    "AGT-research-002",
-    "AGT-analytics-007",
+    "AGT-claims-014 (sim)",
+    "AGT-support-031 (sim)",
+    "AGT-finance-004 (sim)",
+    "AGT-ops-009 (sim)",
+    "AGT-health-018 (sim)",
+    "AGT-research-002 (sim)",
+    "AGT-analytics-007 (sim)",
 ]
 
 SCENARIOS = [
