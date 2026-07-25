@@ -19,7 +19,7 @@ interface Agent {
   compliance: number;
 }
 
-// fallback mock data if the api is unavailable
+
 const statusConfig: Record<Status, { label: string; color: string; bg: string; dot: string }> = {
   Active:    { label: "Active",    color: GREEN,   bg: "#f0fdf4", dot: GREEN },
   Suspended: { label: "Suspended", color: AMBER,   bg: "#fff7ed", dot: AMBER },
@@ -155,7 +155,7 @@ export function AgentOverviewScreen({ onViewRegistry }: { onViewRegistry: (id: s
           })));
         }
       } catch {
-        // keep mock data
+        // leave it empty rather than inventing agents
       }
     };
     load();

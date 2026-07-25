@@ -77,7 +77,7 @@ interface AuditEntry {
   policyDesc: string;
   riskLevel: RiskLevel;
   outcome: Outcome;
-  // extra detail fields from the api, mock rows don't have them
+  // extra detail fields, only present once the entry is expanded
   payloadMasked?: string | null;
   payloadHash?: string;
   prevHash?: string;
@@ -115,33 +115,6 @@ interface PolicyVersion {
   author: string;
   changes: string;
 }
-
-// mock data - real stuff comes from the api, this is just the fallback so the
-// screens aren't empty when the backend is down during demo
-const versionHistory: Record<string, PolicyVersion[]> = {
-  "RULE-001": [
-    { version: 3, timestamp: "2026-05-20 14:32", author: "Domain Admin", changes: "Updated condition logic to include cross-dataset checks" },
-    { version: 2, timestamp: "2026-05-10 09:15", author: "Security Team", changes: "Changed threshold from High to Critical" },
-    { version: 1, timestamp: "2026-04-28 11:00", author: "Compliance Officer", changes: "Initial rule creation" },
-  ],
-  "RULE-002": [
-    { version: 2, timestamp: "2026-05-18 16:20", author: "Domain Admin", changes: "Added new approved vendor to allowlist" },
-    { version: 1, timestamp: "2026-05-01 10:45", author: "Security Team", changes: "Initial rule creation" },
-  ],
-  "RULE-003": [
-    { version: 4, timestamp: "2026-05-15 13:50", author: "Domain Admin", changes: "Reduced threshold from 200 to 100 writes/min" },
-    { version: 3, timestamp: "2026-05-08 14:22", author: "Ops Team", changes: "Changed outcome from DENY to ESCALATE" },
-    { version: 2, timestamp: "2026-04-30 11:30", author: "Security Team", changes: "Updated condition expression" },
-    { version: 1, timestamp: "2026-04-20 09:00", author: "Compliance Officer", changes: "Initial rule creation" },
-  ],
-  "RULE-004": [
-    { version: 5, timestamp: "2026-05-22 10:15", author: "Domain Admin", changes: "Added new injection pattern signatures" },
-    { version: 4, timestamp: "2026-05-18 15:40", author: "Security Team", changes: "Updated regex patterns" },
-    { version: 3, timestamp: "2026-05-12 11:25", author: "Security Team", changes: "Fixed false positive in detection" },
-    { version: 2, timestamp: "2026-05-05 14:10", author: "Domain Admin", changes: "Expanded pattern library" },
-    { version: 1, timestamp: "2026-04-25 09:30", author: "Security Team", changes: "Initial rule creation" },
-  ],
-};
 
 // helpers - colours per risk / outcome so the badges stay consistent
 function riskColor(risk: RiskLevel) {
@@ -525,7 +498,8 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
   const [trendData, setTrendData] = useState<any[]>([]);
   const [violations, setViolations] = useState<any[]>([]);
 
-  // fetch live stats from backend, fall back to mock numbers if api is down
+  // fetch live stats from backend. no fallback numbers - if it doesn't load
+  // the tiles stay at zero rather than showing something mock
   useEffect(() => {
     let mounted = true;
     const fetchStats = async () => {
@@ -883,7 +857,7 @@ function AuditLogScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
           if (data.length > 0) setExpandedRow(data[0].id);
         }
       } catch {
-        // keep mock data if api unavailable
+        // leave it empty rather than showing something mock
       }
       try {
         const pols = await api.getPolicies();
@@ -1113,7 +1087,7 @@ function AuditLogScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
                           <h4 style={{ color: NAVY, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>SHA-256 chain hash</h4>
                           <div className="rounded px-3 py-2 border mb-1"
                             style={{ background: "#f0fdf4", borderColor: "#bbf7d0", fontFamily: "Courier New, monospace", fontSize: 10, color: "#166534", wordBreak: "break-all" }}>
-                            {entry.entryHash || "no hash on mock data - start the api"}
+                            {entry.entryHash || "—"}
                           </div>
                           {entry.prevHash && (
                             <div className="mb-4" style={{ fontFamily: "Courier New, monospace", fontSize: 9, color: "#9ca3af", wordBreak: "break-all" }}>
@@ -1497,7 +1471,7 @@ function PolicyRulesScreen() {
           })));
         }
       } catch {
-        // keep mock rules
+        // leave it empty rather than showing something mock
       }
     };
     load();
@@ -1749,46 +1723,43 @@ function PolicyRulesScreen() {
                 className="flex items-center gap-2 text-sm hover:opacity-80 transition-opacity"
                 style={{ color: NAVY, fontFamily: "Arial, sans-serif", fontSize: 12, fontWeight: 600 }}>
                 <FileText size={14} style={{ color: TEAL }} />
-                {showVersionHistory ? "Hide version history" : "View version history"}
+                {showVersionHistory ? "Hide version info" : "View version info"}
                 {showVersionHistory ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
             </div>
 
-            {/* Version history panel */}
-            {showVersionHistory && versionHistory[editRule.id] && (
+            {/* Current version. we don't retain a change log - there is no
+                version-history table - so this shows the real current state
+                rather than an mock list of past edits. */}
+            {showVersionHistory && (
               <div className="px-5 py-4 border-b" style={{ borderColor: "rgba(27,58,107,0.08)", background: "#fafbfc" }}>
                 <h4 style={{ color: NAVY, fontSize: 12, fontWeight: 700, marginBottom: 10, fontFamily: "Arial, sans-serif" }}>
-                  Version History
+                  Version Info
                 </h4>
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {versionHistory[editRule.id].map((v) => (
-                    <div key={v.version} className="flex gap-3 pb-3 border-b last:border-0" style={{ borderColor: "rgba(27,58,107,0.06)" }}>
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center"
-                          style={{ background: v.version === editRule.version ? TEAL : "#e5e7eb", color: v.version === editRule.version ? "#fff" : "#6b7a99", fontSize: 10, fontWeight: 700, fontFamily: "Arial, sans-serif" }}>
-                          {v.version}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span style={{ fontSize: 11, color: "#374151", fontWeight: 600, fontFamily: "Arial, sans-serif" }}>
-                            {v.author}
-                          </span>
-                          {v.version === editRule.version && (
-                            <span className="px-1.5 py-0.5 rounded" style={{ background: TEAL, color: "#fff", fontSize: 9, fontWeight: 600, fontFamily: "Arial, sans-serif" }}>
-                              CURRENT
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 11, color: "#6b7a99", fontFamily: "Arial, sans-serif", lineHeight: 1.4 }}>
-                          {v.changes}
-                        </div>
-                        <div style={{ fontSize: 10, color: "#9ca3af", fontFamily: "Courier New, monospace", marginTop: 4 }}>
-                          {v.timestamp}
-                        </div>
-                      </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center"
+                      style={{ background: TEAL, color: "#fff", fontSize: 10, fontWeight: 700, fontFamily: "Arial, sans-serif" }}>
+                      {editRule.version}
                     </div>
-                  ))}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span style={{ fontSize: 11, color: "#374151", fontWeight: 600, fontFamily: "Arial, sans-serif" }}>
+                        Version {editRule.version}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded" style={{ background: TEAL, color: "#fff", fontSize: 9, fontWeight: 600, fontFamily: "Arial, sans-serif" }}>
+                        CURRENT
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#6b7a99", fontFamily: "Arial, sans-serif", lineHeight: 1.4 }}>
+                      Rules are versioned in the YAML policy config, which is tracked in git.
+                      Per-edit history is not retained in the database.
+                    </div>
+                    <div style={{ fontSize: 10, color: "#9ca3af", fontFamily: "Courier New, monospace", marginTop: 4 }}>
+                      last modified {(editRule as any).lastModified || "—"}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

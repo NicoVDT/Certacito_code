@@ -84,7 +84,7 @@ export function AgentRegistryScreen({ initialSelectedAgentId = null }: { initial
   const [sortCol, setSortCol] = useState<string>("id");
   const [sortAsc, setSortAsc] = useState(true);
 
-  // merge real agent data from api into the mock data
+  // load the registry from the api
   useEffect(() => {
     const load = async () => {
       try {
