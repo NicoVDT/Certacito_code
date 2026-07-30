@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from jose import jwt, JWTError
-from passlib.context import CryptContext
+import bcrypt
 
 from backend.models.database import get_db
 from backend.models.tables import User, ApiKeyDB
@@ -17,8 +17,15 @@ from backend.models.schemas import UserCreate, Token, Role
 from backend.config import settings
 
 router = APIRouter()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+# bcrypt only reads the first 72 bytes of a password and passlib quietly
+# truncated to fit. bcrypt 4.1 started raising on anything longer instead,
+# which broke every login on a clean install and got worked around by pinning
+# bcrypt==4.0.1 - a pin that would have gone stale and taken the security
+# fixes with it. calling bcrypt directly and truncating here does the same
+# thing passlib did, so hashes written under the old code still verify.
+_MAX_PASSWORD_BYTES = 72
 
 # role shortcuts so the routers don't all repeat the same string lists
 ADMIN_ONLY = ["Administrator"]
@@ -26,12 +33,21 @@ STAFF = ["Administrator", "Analyst"]
 ALL_ROLES = ["Administrator", "Analyst", "Viewer"]
 
 
+def _password_bytes(password: str) -> bytes:
+    return password.encode("utf-8")[:_MAX_PASSWORD_BYTES]
+
+
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_password_bytes(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    # a stored hash that isn't a valid bcrypt digest raises rather than
+    # returning false, so treat a malformed one as simply not matching
+    try:
+        return bcrypt.checkpw(_password_bytes(plain), hashed.encode("utf-8"))
+    except ValueError:
+        return False
 
 
 def create_token(data: dict) -> str:

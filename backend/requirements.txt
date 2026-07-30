@@ -6,10 +6,10 @@ alembic>=1.18.0
 pydantic>=2.13.0
 pydantic-settings>=2.14.0
 python-jose[cryptography]>=3.5.0
-passlib[bcrypt]>=1.7.4
-# passlib pokes the bcrypt backend with an over-long string when it loads and
-# bcrypt 4.1+ throws instead of truncating - broke every login. pin under it
-bcrypt==4.0.1
+# passlib is unmaintained and its bcrypt backend is what forced bcrypt==4.0.1.
+# auth.py calls bcrypt directly now, so the pin is gone and existing hashes
+# still verify - same algorithm, same 72-byte truncation
+bcrypt>=4.1.0
 httpx>=0.28.0
 pyyaml>=6.0.0
 python-multipart>=0.0.20

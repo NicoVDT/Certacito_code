@@ -136,9 +136,12 @@ level; there is no database trigger.
 
 ### Authentication and access control
 
-JWT bearer tokens for users, bcrypt for password hashing (pinned to 4.0.1, because
-passlib probes the backend with an over-length string that bcrypt 4.1+ raises on
-rather than truncating, which broke every login on a clean install).
+JWT bearer tokens for users, bcrypt for password hashing. `auth.py` calls bcrypt
+directly and truncates to 72 bytes itself. That used to go through passlib, which
+probes its backend with an over-length string on import - bcrypt 4.1+ raises on
+that rather than truncating, so it broke every login on a clean install and was
+worked around by pinning `bcrypt==4.0.1`. Dropping passlib removed the pin along
+with the stale-pin problem; the hash format is unchanged, so existing rows verify.
 
 Three roles: Administrator, Analyst, Viewer. Every endpoint carries an auth
 dependency; the role constants live in `backend/api/auth.py`. Agent-facing
