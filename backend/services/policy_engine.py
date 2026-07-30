@@ -1,7 +1,11 @@
+import logging
 import yaml
 import re
 from typing import Optional
 from backend.models.schemas import InterceptionRequest, Outcome, RiskLevel, PolicyRule
+from backend.services import condition_parser
+
+log = logging.getLogger(__name__)
 
 
 class PolicyEngine:
@@ -22,6 +26,7 @@ class PolicyEngine:
     def __init__(self, rules: list[PolicyRule] = None, lists: dict = None):
         self.rules = rules or []
         self.lists = lists or {}
+        self._ast_cache: dict[str, tuple] = {}
 
     def load_from_yaml(self, path: str):
         with open(path, "r") as f:
@@ -103,118 +108,51 @@ class PolicyEngine:
 
     def _eval_condition(self, condition: str, payload: dict) -> bool:
         """
-        basic condition parser. handles ==, !=, IN, NOT IN, MATCHES, > and AND.
+        does this condition hold for this payload.
 
-        anything we can't resolve now says the condition does NOT hold, so the
-        rule doesn't match and the request drops through to the default deny.
-        it used to assume unresolvable conditions held, which sounds harmless
-        until you notice RULE-005 is a *permit* - "tool_id IN approved_tools"
-        came back true for every tool on earth, so the allowlist allowed
-        everything. same shape of bug let restricted tables be read (issue #14).
+        the parsing lives in condition_parser - see that module for why the
+        old substring-matching version had to go. the important part here is
+        the `is True` at the end: the parser answers true, false or unknown,
+        and only a definite true matches. an unresolvable condition therefore
+        never satisfies a rule, whether the rule permits or denies.
+
+        that matters because RULE-005 is a *permit* - back when unresolvable
+        conditions were assumed to hold, "tool_id IN approved_tools" came back
+        true for every tool on earth and the allowlist allowed everything.
+        same shape of bug let restricted tables be read (issue #14).
         """
         if not condition:
             return True
 
-        cond = condition.lower()
-        # AND -> every part has to hold
-        for part in cond.split(" and "):
-            if not self._eval_one(part.strip(), payload):
-                return False
-        return True
-
-    def _eval_one(self, part, payload) -> bool:
-        # the dynamic field is conventionally on the left. if its not in the
-        # payload we can't evaluate the condition, so it doesn't hold (fail-closed)
-        left = self._left_side(part)
-        if left is not None and not self._is_literal(left) and left not in payload:
-            return False
-
-        if " not in " in part:
-            _, right = part.split(" not in ", 1)
-            return self._member(left, right.strip(), payload) is False
-        if " in " in part:
-            _, right = part.split(" in ", 1)
-            return self._member(left, right.strip(), payload)
-
-        if "not matches" in part:
-            _, right = part.split("not matches", 1)
-            return self._matches(left, right.strip(), payload) is False
-        if "matches" in part:
-            _, right = part.split("matches", 1)
-            return self._matches(left, right.strip(), payload)
-        if "!=" in part:
-            _, right = part.split("!=", 1)
-            return self._equal(left, right.strip(), payload) is False
-        if "==" in part:
-            _, right = part.split("==", 1)
-            return self._equal(left, right.strip(), payload)
-        if ">" in part:
-            _, right = part.split(">", 1)
-            return self._greater(left, right.strip(), payload)
-
-        # no operator we recognise - can't evaluate it, so it doesn't hold
-        return False
-
-    def _member(self, left, list_name, payload) -> bool:
-        """is the payload value in the named list from the yaml"""
-        values = self.lists.get(list_name.strip().strip("'\""))
-        if values is None:
-            # a rule referring to a list that doesn't exist is a config error.
-            # returning False means the rule wont match, which for a permit
-            # rule means deny - we'd rather over-block than silently allow.
-            return False
-        return str(self._resolve(left, payload)).strip().lower() in values
-
-    def _left_side(self, part):
-        # longest / most specific operators first, otherwise "not matches"
-        # gets split on "matches" and the field name comes out as "x not"
-        for op in (" not in ", " in ", "not matches", "matches", "!=", "==", ">"):
-            if op in part:
-                return part.split(op, 1)[0].strip()
-        return None
-
-    def _is_literal(self, token):
-        token = token.strip()
-        if (token.startswith("'") and token.endswith("'")) or (token.startswith('"') and token.endswith('"')):
-            return True
         try:
-            float(token)
-            return True
-        except ValueError:
+            node = self._compiled(condition)
+        except condition_parser.ConditionError as exc:
+            # a condition we can't parse is a config error, not a match. log it
+            # loudly - silently never matching is how the CONTAINS rules sat
+            # broken in the library without anyone noticing
+            log.warning("unparseable rule condition %r: %s", condition, exc)
             return False
 
-    def _resolve(self, token, payload):
-        token = token.strip().strip("'\"")
-        if token in payload:
-            return payload[token]
-        return token
+        result = condition_parser.Evaluator(
+            payload, self.lists, matcher=self._semantic_match
+        ).eval(node)
+        return result is True
 
-    def _equal(self, left, right, payload):
-        l = self._resolve(left, payload)
-        r = self._resolve(right, payload)
-        if isinstance(l, str) and isinstance(r, str):
-            return l.lower() == r.lower()
-        return l == r
+    def _compiled(self, condition: str):
+        """parse once and keep it - rules are evaluated on every intercept"""
+        node = self._ast_cache.get(condition)
+        if node is None:
+            node = condition_parser.parse(condition)
+            self._ast_cache[condition] = node
+        return node
 
-    def _greater(self, left, right, payload):
-        l = self._resolve(left, payload)
-        try:
-            return float(l) > float(right)
-        except (ValueError, TypeError):
-            # can't compare as numbers -> can't say it holds
-            return False
-
-    def _matches(self, left, right, payload):
-        # the only MATCHES rule we have is `input MATCHES injection_patterns`,
-        # so just run the semantic guard over that field if we actually have it
+    @staticmethod
+    def _semantic_match(value: str, _pattern_set: str):
+        # the only MATCHES rules we have point at injection_patterns, so the
+        # guard is the matcher. named separately so the parser doesn't have to
+        # know the guard exists
         from backend.services.semantic_guard import SemanticGuard
-        if left not in payload:
-            return False
-        val = payload[left]
-        if not isinstance(val, str):
-            return False
-        # `right` is something like "injection_patterns" - we just reuse the guard
-        return SemanticGuard().evaluate(val).threat_type != "none"
+        return SemanticGuard().evaluate(value).threat_type != "none"
 
     def _risk_rank(self, risk: RiskLevel) -> int:
         ranks = {RiskLevel.low: 0, RiskLevel.medium: 1, RiskLevel.high: 2, RiskLevel.critical: 3}
