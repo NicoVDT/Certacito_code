@@ -1,0 +1,55 @@
+# Caddy config for the VM. lives at /etc/caddy/Caddyfile on the box - kept in
+# the repo so it is version controlled rather than only existing on the host.
+#
+# two vhosts, both on 443, both getting a real Let's Encrypt cert. nip.io is
+# wildcard DNS that resolves any <label>.<ip-with-dashes>.nip.io straight back
+# to that IP, so we get certs without owning a domain.
+#
+#   app.20-92-93-30.nip.io  -> the platform (this is the new one)
+#   20-92-93-30.nip.io      -> the OpenClaw agent console, behind basic auth
+#
+# the platform used to be plain HTTP on port 80 and nothing else. that put
+# every login POST and every JWT on the open internet in clear text, which is
+# a poor look for a governance product. port 80 stays listening so the old
+# URL keeps working, but it redirects.
+
+{
+	# port 80 belongs to the app container; ACME uses tls-alpn on 443
+	http_port 8080
+}
+
+# --- the platform -----------------------------------------------------------
+
+https://app.20-92-93-30.nip.io {
+	# the app container publishes 80:8000, so we proxy to it on the host
+	reverse_proxy localhost:80 {
+		# the app only trusts this when TRUST_PROXY_HEADER=true is set in
+		# ~/certacito/.env - otherwise the rate limiter reads whatever the
+		# client typed and every request lands in its own bucket
+		header_up X-Real-IP {remote_host}
+	}
+
+	encode gzip
+
+	header {
+		# the cert is real, so HSTS is safe to send. start it short - once
+		# you are happy nothing depends on plain HTTP, raise it
+		Strict-Transport-Security "max-age=86400"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+# --- the agent console ------------------------------------------------------
+
+# basic auth in front because this is reachable from the open internet and the
+# gateway's own token travels in a URL query string. REPLACE the hash below
+# with the one already on the box - `caddy hash-password` generates it, and
+# the live value is not in the repo on purpose.
+https://20-92-93-30.nip.io {
+	basic_auth {
+		# admin <bcrypt-hash-goes-here>
+	}
+	reverse_proxy localhost:18789
+}

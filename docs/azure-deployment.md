@@ -144,17 +144,43 @@ bug but isn't.
 - open the audit log and run **Verify chain**
 - confirm the agent console prompts for basic auth
 
+## TLS
+
+`infra/caddy/Caddyfile` in the repo is the config for the host Caddy. It adds a
+second vhost, `app.20-92-93-30.nip.io`, proxying to the app on localhost:80, so
+the platform is reachable over HTTPS with a real certificate. Before this, port
+80 was plain HTTP and every login POST and JWT crossed the internet in clear.
+
+**Not applied yet** - it needs a shell on the box:
+
+```bash
+# the basic_auth hash for the agent console vhost is not in the repo, so copy
+# the existing one across rather than pasting this file over the top blind
+sudo cp infra/caddy/Caddyfile /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+
+# then let the app trust the header Caddy sets, otherwise the rate limiter
+# still counts every request against the proxy
+echo 'TRUST_PROXY_HEADER=true' >> ~/certacito/.env
+docker compose -f docker-compose.azure.yml up -d
+```
+
+Port 80 keeps serving so existing links do not break. Once nothing depends on
+plain HTTP, bind the app publish to `127.0.0.1:80:8000` so Caddy is the only way
+in, and raise the `Strict-Transport-Security` max-age.
+
 ## Known gaps and gotchas
 
-- **No TLS on the platform itself.** Port 80 is plain HTTP; only the agent console
-  is behind Caddy on 443. A custom domain plus a certificate is outstanding.
-- **The VM has a daily auto-shutdown** to protect student credit. If the site is
-  unreachable, check the VM is started before debugging anything else.
+- **The VM has a daily auto-shutdown** (01:00 AEST) to protect student credit. If
+  the site is unreachable, check the VM is started before debugging anything else.
 - Migrations: the app runs `init_db()` on startup; use Alembic against the VM's
   Postgres for schema changes after that.
-- The rate limiter is in-memory per instance. Fine on one box, revisit before
-  scaling out.
-- `bcrypt` is pinned to 4.0.1. Unpinning it breaks every login on a clean install,
-  because passlib probes the backend with an over-length string that 4.1+ raises on.
+- The rate limiter keeps its counters in Redis, which is already in the compose
+  file. If Redis is unreachable it falls back to counting in-process and logs a
+  warning - the limit still applies, just per-instance.
+- `TRUST_PROXY_HEADER` defaults to false. Only turn it on when something in front
+  of the app actually overwrites `X-Real-IP`; trusting it otherwise hands every
+  caller a private rate limit bucket, `/auth/login` included.
 - The admin bootstrap only applies to the first registered account. Register is
   admin-only once any user exists.
