@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     # agents can't do jwt login so they get a key. empty = fail-closed.
     agent_api_key: str = os.getenv("AGENT_API_KEY", "")
 
+    # rate limiter state. shared through redis so the counters survive a
+    # restart and hold across more than one container
+    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+    # only turn this on when something in front of the app overwrites
+    # x-real-ip. off, the header is whatever the client typed, and trusting
+    # it hands out a fresh rate limit bucket per request
+    trust_proxy_header: bool = os.getenv("TRUST_PROXY_HEADER", "false").lower() == "true"
+
     # approval queue sla (seconds)
     sla_timeout: int = 3600
 
