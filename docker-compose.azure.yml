@@ -32,6 +32,10 @@ services:
       AGENT_API_KEY: "${AGENT_API_KEY}"
       POLICY_CONFIG: "/app/backend/policies.yaml"
       RULE_LIBRARY: "/app/backend/rule_library.yaml"
+      # off unless the .env on the box turns it on, which should only happen
+      # once caddy is in front overwriting x-real-ip. setting it any earlier
+      # means the rate limiter trusts a header the client controls
+      TRUST_PROXY_HEADER: "${TRUST_PROXY_HEADER:-false}"
     depends_on:
       postgres:
         condition: service_healthy
