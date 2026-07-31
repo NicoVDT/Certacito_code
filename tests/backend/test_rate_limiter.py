@@ -1,14 +1,43 @@
 """
-rate limiter. redis is optional here - the tests that care about the shared
-counter force the in-memory fallback, so they run the same whether or not a
-redis is up (CI has no redis service).
+rate limiter.
+
+most of these force the in-memory fallback so they run anywhere. the redis
+ones are marked and skip themselves when there is no redis to talk to - CI
+runs a redis service so they execute there.
+
+the skip matters: the fallback is deliberately silent, so a limiter that
+never reaches redis still passes every other test in this file. without a
+test that asserts redis was actually used, "CI is green" would say nothing
+about whether the shared counter works.
 """
 import asyncio
 
+import pytest
 from starlette.requests import Request
 
+from backend.config import settings
 from backend.services.rate_limiter import RateLimiter
 from backend.services.rate_middleware import RateLimitMiddleware
+
+
+def redis_available() -> bool:
+    async def ping():
+        try:
+            from redis import asyncio as aioredis
+
+            client = aioredis.from_url(settings.redis_url)
+            await client.ping()
+            await client.aclose()
+            return True
+        except Exception:
+            return False
+
+    return asyncio.run(ping())
+
+
+needs_redis = pytest.mark.skipif(
+    not redis_available(), reason="no redis on redis_url"
+)
 
 
 def local_limiter(max_requests, window=60):
@@ -62,15 +91,68 @@ def test_falls_back_instead_of_failing_when_redis_is_unreachable():
     # a limiter that hard-fails turns a redis blip into a total outage. point
     # it at a dead port and it should still answer, just from memory
     rl = RateLimiter(max_requests=1, window_seconds=60, namespace="test")
-    from backend.config import settings
 
     original = settings.redis_url
     settings.redis_url = "redis://127.0.0.1:1/0"
     try:
         assert run(rl.is_allowed("k")) is True
         assert run(rl.is_allowed("k")) is False
+        assert rl._redis_failed is True
     finally:
         settings.redis_url = original
+
+
+# --- the real redis path ----------------------------------------------------
+
+@needs_redis
+def test_limit_is_enforced_through_redis_not_the_fallback():
+    import uuid
+
+    rl = RateLimiter(max_requests=3, window_seconds=60, namespace=f"test:{uuid.uuid4()}")
+
+    async def go():
+        results = [await rl.is_allowed("1.2.3.4") for _ in range(5)]
+        # the assertion that earns this test its keep: we went through redis
+        # rather than quietly counting in process
+        assert rl._redis is not None
+        assert rl._redis_failed is False
+        return results
+
+    assert run(go()) == [True, True, True, False, False]
+
+
+@needs_redis
+def test_counters_are_shared_between_instances():
+    # the whole point of moving off in-memory. two limiters are two processes
+    # as far as the counter is concerned - they must share one budget
+    import uuid
+
+    ns = f"test:{uuid.uuid4()}"
+    a = RateLimiter(max_requests=2, window_seconds=60, namespace=ns)
+    b = RateLimiter(max_requests=2, window_seconds=60, namespace=ns)
+
+    async def go():
+        first = await a.is_allowed("shared")
+        second = await b.is_allowed("shared")
+        # budget of 2 is spent across the pair, so either instance is now shut
+        return first, second, await a.is_allowed("shared"), await b.is_allowed("shared")
+
+    assert run(go()) == (True, True, False, False)
+
+
+@needs_redis
+def test_the_key_expires_so_idle_clients_dont_accumulate():
+    import uuid
+
+    ns = f"test:{uuid.uuid4()}"
+    rl = RateLimiter(max_requests=5, window_seconds=30, namespace=ns)
+
+    async def go():
+        await rl.is_allowed("someone")
+        return await rl._redis.ttl(f"{ns}:someone")
+
+    ttl = run(go())
+    assert 0 < ttl <= 30
 
 
 # --- client identification --------------------------------------------------
