@@ -36,6 +36,11 @@ services:
       # once caddy is in front overwriting x-real-ip. setting it any earlier
       # means the rate limiter trusts a header the client controls
       TRUST_PROXY_HEADER: "${TRUST_PROXY_HEADER:-false}"
+      # and it is only honoured for requests that arrive from these. we still
+      # publish 80 below, so a caller can reach the app without going through
+      # caddy at all, and on that path the header is theirs to set. caddy
+      # comes off the docker bridge so the private ranges are what we want
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES:-127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}"
     depends_on:
       postgres:
         condition: service_healthy

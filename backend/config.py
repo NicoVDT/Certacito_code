@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     # it hands out a fresh rate limit bucket per request
     trust_proxy_header: bool = os.getenv("TRUST_PROXY_HEADER", "false").lower() == "true"
 
+    # and which peers are allowed to set it. the container publishes 80
+    # straight out, so a request can arrive without passing through the proxy
+    # at all - the socket address is the only thing that separates the two.
+    # caddy reaches us over the docker bridge, so the private ranges cover it,
+    # and nothing routed off the internet can claim a source in there.
+    trusted_proxies: str = os.getenv(
+        "TRUSTED_PROXIES",
+        "127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+    )
+
     # approval queue sla (seconds)
     sla_timeout: int = 3600
 

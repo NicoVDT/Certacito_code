@@ -182,5 +182,12 @@ in, and raise the `Strict-Transport-Security` max-age.
 - `TRUST_PROXY_HEADER` defaults to false. Only turn it on when something in front
   of the app actually overwrites `X-Real-IP`; trusting it otherwise hands every
   caller a private rate limit bucket, `/auth/login` included.
+- `TRUSTED_PROXIES` is the other half of that, and the flag is not safe without
+  it. The flag says a proxy overwrites the header, which is only true of traffic
+  that came through the proxy - and port 80 is still published straight out, so
+  a caller can reach the app directly and set the header themselves. Only peers
+  inside these ranges get believed. Caddy proxies from the Docker bridge, so the
+  default private ranges cover it, and no internet-routed client can claim a
+  source address inside them. Widen it and you reopen the bypass.
 - The admin bootstrap only applies to the first registered account. Register is
   admin-only once any user exists.

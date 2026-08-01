@@ -173,10 +173,10 @@ def make_request(headers: dict, peer: str = "10.0.0.1"):
 
 
 def test_x_real_ip_is_ignored_unless_a_proxy_is_configured():
-    # the header used to be trusted unconditionally. nothing in front of the
-    # app sets it - the container publishes 80:8000 directly - so it arrives
-    # from the client, and a fresh value per request means a fresh bucket per
-    # request and no limit at all, /auth/login included
+    # the header used to be trusted unconditionally. only caddy's vhosts set
+    # it - the container also publishes 80 directly, and on that path the
+    # header arrives from the client, so a fresh value per request means a
+    # fresh bucket per request and no limit at all, /auth/login included
     from backend.config import settings
 
     original = settings.trust_proxy_header
@@ -199,6 +199,61 @@ def test_x_real_ip_is_used_when_a_proxy_is_configured():
         # a comma separated chain takes the first hop
         chained = make_request({"x-real-ip": "1.1.1.1, 2.2.2.2"}, peer="10.0.0.1")
         assert RateLimitMiddleware._client_ip(chained) == "1.1.1.1"
+    finally:
+        settings.trust_proxy_header = original
+
+
+def test_x_real_ip_is_ignored_when_the_request_did_not_come_via_the_proxy():
+    # found this against the deployed box: trust_proxy_header was on, and the
+    # flag alone was the whole check. it means "a proxy overwrites this
+    # header", which is only true of requests that went through the proxy -
+    # and port 80 is published straight out, so plenty don't. curl the public
+    # ip with any x-real-ip you like and you get your own bucket. the peer
+    # address is what separates the two: caddy comes off the docker bridge,
+    # a direct caller arrives as themselves
+    from backend.config import settings
+
+    original = settings.trust_proxy_header
+    settings.trust_proxy_header = True
+    try:
+        forged = make_request({"x-real-ip": "203.0.113.77"}, peer="94.154.43.183")
+        assert RateLimitMiddleware._client_ip(forged) == "94.154.43.183"
+    finally:
+        settings.trust_proxy_header = original
+
+
+def test_rotating_a_forged_header_cannot_buy_extra_requests():
+    # the bypass itself, end to end. same caller, a new spoofed ip each time -
+    # the limit has to hold anyway or /auth/login has no brute force cover
+    from backend.config import settings
+
+    rl = local_limiter(2)
+    original = settings.trust_proxy_header
+    settings.trust_proxy_header = True
+
+    async def go():
+        out = []
+        for spoof in ["1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4"]:
+            req = make_request({"x-real-ip": spoof}, peer="94.154.43.183")
+            out.append(await rl.is_allowed(RateLimitMiddleware._client_ip(req)))
+        return out
+
+    try:
+        assert run(go()) == [True, True, False, False]
+    finally:
+        settings.trust_proxy_header = original
+
+
+def test_a_header_that_isnt_an_ip_is_ignored():
+    # caddy overwrites it so this shouldn't happen, but the value becomes part
+    # of a redis key name and an unbounded one is not worth trusting
+    from backend.config import settings
+
+    original = settings.trust_proxy_header
+    settings.trust_proxy_header = True
+    try:
+        junk = make_request({"x-real-ip": "not-an-ip"}, peer="10.0.0.1")
+        assert RateLimitMiddleware._client_ip(junk) == "10.0.0.1"
     finally:
         settings.trust_proxy_header = original
 
