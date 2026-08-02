@@ -1,6 +1,6 @@
 # background traffic simulator for demo purposes. generates realistic-ish
 # governance events every few seconds so the dashboard always has fresh
-# data flowing through it. to populate the live feed
+# data flowing through it to populate the live feed
 import asyncio
 import os
 import random

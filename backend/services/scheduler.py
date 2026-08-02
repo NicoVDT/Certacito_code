@@ -17,7 +17,7 @@ from backend.api.reports import build_compliance_report, _render_pdf, _next_run_
 
 logger = logging.getLogger("certacito.scheduler")
 
-# how often the loop wakes up and checks for due reports. polling interval for due reports
+# polling interval for due reports
 CHECK_INTERVAL_SECONDS = 300
 
 

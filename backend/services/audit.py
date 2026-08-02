@@ -10,7 +10,7 @@ from sqlalchemy import select, desc
 from backend.models.tables import AuditLog
 from backend.models.schemas import Outcome, RiskLevel
 
-# fix: prevent concurrent intercepts where two concurrent intercepts would both read the
+# fix: prevent concurrent intercepts from reading the same
 # same chain head and then each append, forking the whole chain. we only run a
 # single uvicorn process so a plain lock is enough to serialise the appends.
 # TODO: if we ever go multi-worker we'd need a db-level lock here

@@ -71,7 +71,7 @@ class RiskClassifier:
             if keyword in payload_str:
                 score += bump
                 factors.append(f"sensitive keyword '{keyword}': +{bump}")
-                break  # only count the highest one, apply only the highest severity keyword penalty
+                break  # apply only the highest severity keyword penalty
 
         # payload size. bigger payload = more data moving around
         payload_size = len(str(request.payload))
