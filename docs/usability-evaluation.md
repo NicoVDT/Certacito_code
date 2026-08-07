@@ -33,7 +33,7 @@ with concrete recommended fixes. Severity is our judgement of user impact.
 
 | ID | Finding | Heuristic / criterion | Severity | Status |
 |----|---------|----------------------|----------|--------|
-| U-01 | Sign-in crashed on a fresh build (a component read a `user` value that was never passed to it). Found while preparing this evaluation. | Error prevention | High | **Fixed** - and a TypeScript check was added to CI so this class of bug fails the build instead of shipping |
+| U-01 | Sign-in crashed on a fresh build (a component read a `user` value that was never passed to it). Found during A4 submission preparation when sign-in was tested on a clean deploy. | Error prevention | High | **Fixed** - and a TypeScript check was added to CI so this class of bug fails the build instead of shipping |
 | U-02 | Agent registry showed "0 of 0 agents" while agents were live and reporting | Visibility of system status | Medium | **Fixed** - registry now maps live API data directly |
 | U-03 | Compliance score displayed 100% before any traffic existed, which reads as a (false) claim | Match with the real world | Medium | **Fixed** - shows a dash until there is data to score |
 | U-04 | Panel titled "Assigned policy rules" actually listed permitted action types | Match with the real world | Low | **Fixed** - renamed |

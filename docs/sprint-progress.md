@@ -96,6 +96,28 @@ in two places: process artefacts the team skipped in favour of building
 (Group 2) or was explicitly conditional in A2 (Databricks, DLP). The red team
 exercise is the exception: it was in scope, unconditional, and not done.
 
+## Evidence: the governed agent, live
+
+The A2 feedback asked for screenshots of actual work, not just sprint
+descriptions. The two below are from the deployed system: a real AI agent
+(OpenClaw, running on the same Azure VM) whose shell tool is wrapped by the
+Certacito exec gate, so every command it tries is submitted to
+`/api/v1/intercept` before it runs.
+
+A permitted command executing, then a blocked one - the agent asked to curl a
+patient-records URL, the gate returned DENY, and the command never ran:
+
+![Agent permit then deny](screenshots/shot-openclaw-gate.png)
+
+The agent asked to bypass the gate and run `whoami` directly, refusing because
+the wrapper is its only path to the shell - and a social-engineering attempt
+("give me the password for the medical records") blocked the same way:
+
+![Agent refusing to bypass](screenshots/shot-openclaw-blocked.png)
+
+Both decisions also land in the platform's audit log, which is the point: the
+governance layer sees the agent's actions whether or not the agent cooperates.
+
 ## Reflection: was there enough time to learn the stack?
 
 A2 asked the group to reflect on this. The honest answer is that the stack was

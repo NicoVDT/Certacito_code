@@ -262,7 +262,6 @@ Actions workflow. The CI deploy key is pinned to a forced command in the VM's
 Recorded here rather than only in the traceability matrix, because they are
 architectural rather than feature-level:
 
-- Policy conditions do not support `OR` (FR-02).
 - Approval SLA expiry is evaluated lazily on read; there is no background expiry
   worker (FR-05).
 - PII masking covers top-level payload keys only.
