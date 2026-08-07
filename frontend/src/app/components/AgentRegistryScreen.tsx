@@ -75,6 +75,41 @@ function ComplianceBar({ score }: { score: number }) {
   );
 }
 
+// the api has no risk or compliance column of its own - both fall out of how
+// much of the agents traffic the policy engine ended up blocking
+function riskFromActivity(agent: any): RiskLevel {
+  if (!agent.total_actions) return "Low";
+  const ratio = agent.blocked_actions / agent.total_actions;
+  if (ratio > 0.5) return "Critical";
+  if (ratio > 0.3) return "High";
+  if (ratio > 0.1) return "Medium";
+  return "Low";
+}
+
+function complianceFromActivity(agent: any): number {
+  if (!agent.total_actions) return 100;
+  return Math.round(((agent.total_actions - agent.blocked_actions) / agent.total_actions) * 100);
+}
+
+function toRow(a: any): Agent {
+  return {
+    id: a.id,
+    name: a.name,
+    type: a.model || "model not set",
+    status: a.status === "active" ? "Active" : a.status === "suspended" ? "Suspended" : "Offline",
+    riskTier: riskFromActivity(a),
+    decisionsToday: a.total_actions ?? 0,
+    violationsToday: a.blocked_actions ?? 0,
+    lastActivity: a.last_seen ? a.last_seen.replace("T", " ").slice(0, 16) : "no activity yet",
+    environment: a.container === "azure-vm" ? "Production" : "Staging",
+    model: a.model || "not set",
+    owner: a.owner || "not set",
+    activeSince: (a.registered_at || "").slice(0, 10),
+    assignedRules: a.permissions ?? [],
+    complianceScore: complianceFromActivity(a),
+  };
+}
+
 export function AgentRegistryScreen({ initialSelectedAgentId = null }: { initialSelectedAgentId?: string | null }) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [search, setSearch] = useState("");
@@ -84,33 +119,23 @@ export function AgentRegistryScreen({ initialSelectedAgentId = null }: { initial
   const [sortCol, setSortCol] = useState<string>("id");
   const [sortAsc, setSortAsc] = useState(true);
 
-  // load the registry from the api
+  // load the registry from the api. this only ever merged live stats into rows
+  // that were already in local state, so once the invented seed rows came out
+  // the table had nothing to merge into and rendered 0 of 0 agents while the
+  // api was returning a real one
   useEffect(() => {
     const load = async () => {
       try {
         const liveAgents = await api.getAgents();
-        if (!liveAgents || liveAgents.length === 0) return;
-        setAgents(prev => {
-          const merged = [...prev];
-          for (const live of liveAgents) {
-            const idx = merged.findIndex(a => a.id === live.id);
-            if (idx >= 0) {
-              // update existing with live stats
-              merged[idx] = {
-                ...merged[idx],
-                status: live.status === "active" ? "Active" : live.status === "suspended" ? "Suspended" : "Offline",
-                model: live.model || merged[idx].model,
-                lastActivity: live.last_seen?.replace("T", " ").slice(0, 16) || merged[idx].lastActivity,
-                decisionsToday: live.total_actions || merged[idx].decisionsToday,
-                violationsToday: live.blocked_actions || merged[idx].violationsToday,
-              };
-            }
-          }
-          return merged;
-        });
-      } catch {}
+        if (!liveAgents) return;
+        setAgents(liveAgents.map(toRow));
+      } catch {
+        // keep whatever is on screen rather than inventing agents
+      }
     };
     load();
+    const timer = setInterval(load, 10000);
+    return () => clearInterval(timer);
   }, []);
 
   const selectedAgent = selectedAgentId ? agents.find(a => a.id === selectedAgentId) ?? null : null;
@@ -402,9 +427,11 @@ export function AgentRegistryScreen({ initialSelectedAgentId = null }: { initial
                 </div>
               </div>
 
-              {/* Assigned rules */}
+              {/* what the agent registered itself as allowed to attempt. not the
+                  same thing as a policy rule - every one of these still gets
+                  evaluated on the way through */}
               <div>
-                <div style={{ color: "#9ca3af", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", marginBottom: 6 }}>ASSIGNED POLICY RULES</div>
+                <div style={{ color: "#9ca3af", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", marginBottom: 6 }}>PERMITTED ACTION TYPES</div>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedAgent.assignedRules.map(r => (
                     <span key={r} style={{ fontFamily: "Courier New, monospace", fontSize: 10, background: `${NAVY}0f`, color: NAVY, padding: "2px 8px", borderRadius: 4, fontWeight: 600 }}>
