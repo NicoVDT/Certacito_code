@@ -157,6 +157,29 @@ PostgreSQL 16, accessed asynchronously through SQLAlchemy 2.0 with asyncpg.
 Eight tables: `audit_log`, `approval_queue`, `policy_rules`, `users`, `agents`,
 `api_keys`, `scheduled_reports`, `report_exports`.
 
+Entity relationship diagram, generated from the SQLAlchemy models in
+`backend/models/tables.py`: `docs/screenshots/database-erd.png` (mermaid source
+in `docs/database-erd.html`).
+
+**The relationships in that diagram are logical, not declared.** No column
+carries a `ForeignKey` constraint, so the database will not reject an
+`audit_log` row naming an agent that was never registered. That is deliberate
+in one place and a known gap in the others:
+
+- `audit_log.agent_id` **must** stay unconstrained. The whole point of the log
+  is to record what an unknown or unregistered caller attempted. A foreign key
+  here would make the system refuse to record exactly the events it exists to
+  catch, and it would let anyone delete an agent row to orphan its history.
+- `approval_queue.reviewer`, `policy_rules.created_by` and the `created_by`
+  columns on `api_keys` and `scheduled_reports` hold an email rather than a
+  user id, so a renamed account leaves the old string behind. These should be
+  real references and are not.
+
+Integrity is enforced in the application layer instead: the interception path
+resolves the agent before it writes counters, and the reviewer identity is taken
+from the verified JWT rather than the request body. Same register as the
+append-only guarantee below, which is also an application-level promise.
+
 Alembic is configured, but the schema is created by `Base.metadata.create_all()`
 on startup and the one revision in `backend/alembic/versions` is empty. Nothing
 in the deployment runs `alembic upgrade`. Recorded here rather than left implied.

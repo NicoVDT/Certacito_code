@@ -1,7 +1,8 @@
 # Requirements Traceability Matrix - Certacito.ai (Group 28)
 
-Status as of 02 August 2026, against the A2 requirements baseline.
+Status as of 07 August 2026, against the A2 requirements baseline.
 Priority follows MoSCoW. "Evidence" points at where a marker can verify.
+Build order and what depends on what is in the section below the table.
 
 | ID | Requirement | Type | Priority | Status | Evidence / Notes |
 |----|-------------|------|----------|--------|------------------|
@@ -17,11 +18,36 @@ Priority follows MoSCoW. "Evidence" points at where a marker can verify.
 | FR-10 | Policy rule library (5+ pre-built regulated-industry rules) | F | Should | **Done (exceeds)** | 10 rules in `backend/rule_library.yaml`, each tagged with its regulatory alignment (Privacy Act 1988, My Health Records Act, APRA CPS 234, ...). Import via `/api/v1/policies/library`. |
 | FR-11 | Group 2 integration demonstration (GP office agent) | F | Should | **Blocked (external)** | Waiting on Group 2's agent API contract. The repeatable healthcare scenario (`POST /api/v1/demo/healthcare-scenario`) demonstrates the same end-to-end flow against simulated GP-office actions in the meantime. Each of its five steps now goes through the same `intercept_action()` the agents call, so the outcomes come from the policy engine and semantic guard - it previously wrote hardcoded outcomes straight to the audit log, which would have produced the same five results with the engine deleted. The response returns expected vs actual per step. |
 
+## Build order and dependencies
+
+Nothing here was picked for convenience. Each requirement below could not
+start until the one above it existed, which is why the Must set closed before
+any of the Should set opened.
+
+| Order | Requirement | Depends on | Why it cannot come earlier |
+|---|---|---|---|
+| 1 | FR-02 policy engine | none | Every other decision path needs something to ask. Built first against direct calls, no HTTP. |
+| 2 | FR-03 audit chain | FR-02 | There is nothing worth chaining until a decision exists to record. |
+| 3 | FR-01 interception endpoint | FR-02, FR-03 | The endpoint is the seam that joins them. It cannot fail closed until there is an engine to fail and a log to record the failure in. |
+| 4 | FR-04 RBAC | FR-01 | Roles are defined per endpoint, so the endpoints have to exist. Agent callers forced the `X-API-Key` split at this point. |
+| 5 | FR-09 risk classification | FR-02 | Feeds the risk level that FR-05 escalates on. |
+| 6 | FR-05 approval queue | FR-01, FR-04, FR-09 | Needs an ESCALATE outcome to queue, a risk level to trigger on, and a verified reviewer identity to attribute the decision to. |
+| 7 | FR-06 dashboard | FR-03, FR-05 | Reads the audit log and the queue. Nothing to render before both exist. |
+| 8 | FR-08 semantic guardrails | FR-01 | Runs ahead of the policy engine inside the interception path, so it needs that path. |
+| 9 | FR-10 rule library | FR-02 | Pre-built rules are only useful once the engine can evaluate them. |
+| 10 | FR-07 Azure deployment | FR-01 to FR-06 | Deploying an incomplete decision path proves nothing. CI gates the deploy, so the tests had to exist first. |
+| 11 | FR-11 Group 2 integration | FR-01, FR-07, external | Blocked on a contract we do not own. Not sequencing, a dependency outside the team. |
+
+The one true external dependency is FR-11. Everything else is internal
+sequencing the team controlled.
+
 ## Changes since A2
 
 - **Added:** agent API-key authentication for machine callers (A2 assumed JWT everywhere; agents cannot do an interactive login).
 - **Added:** live traffic simulator for demo/testing (not a requirement, supports FR-06 demonstration).
-- **Changed:** FR-07 deployment target is staged on Proxmox LXC first, Azure second. Same containerised architecture; the staging environment is what A4 demonstrates.
+- **Added:** persistent agent registry (`agents` table). A2 did not call for one; it became necessary once agents had to be suspended and audited by identity.
+- **Changed:** FR-07 target is a single Azure VM running Docker Compose, not App Service plus Key Vault. Reason in the FR-07 row. **Azure is the environment A4 demonstrates**, at `http://20.92.93.30`; Proxmox was development-only and no longer serves the demo.
+- **Descoped:** Databricks / Delta Lake migration for the audit store. A2 made this conditional on access being confirmed (Sprint 4, "if access confirmed"). Access was never confirmed, so the audit store stays on PostgreSQL. The hash chain gives the tamper-evidence the migration was wanted for.
 - **Removed:** nothing removed from the Must/Should sets.
 
 ## Non-functional requirements snapshot

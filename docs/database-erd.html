@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body{background:#fff;font-family:Arial,sans-serif;margin:0;padding:20px}
+  #wrap{width:1500px}
+</style>
+</head>
+<body>
+<div id="wrap">
+<pre class="mermaid">
+erDiagram
+    AGENTS ||--o{ AUDIT_LOG : "raises decisions"
+    AGENTS ||--o{ APPROVAL_QUEUE : "raises escalations"
+    POLICY_RULES ||--o{ AUDIT_LOG : "decides"
+    POLICY_RULES ||--o{ APPROVAL_QUEUE : "escalates"
+    AUDIT_LOG ||--|| AUDIT_LOG : "prev_hash chains to"
+    USERS ||--o{ APPROVAL_QUEUE : "reviews"
+    USERS ||--o{ POLICY_RULES : "authors"
+    USERS ||--o{ API_KEYS : "issues"
+    USERS ||--o{ SCHEDULED_REPORTS : "schedules"
+    SCHEDULED_REPORTS ||--o{ REPORT_EXPORTS : "produces"
+
+    AGENTS {
+        string id PK "AGT-openclaw-azure"
+        string name
+        string status "active or suspended"
+        string model
+        string container
+        datetime registered_at
+        datetime last_seen
+        text permissions "comma separated action types"
+        int total_actions
+        int blocked_actions
+    }
+
+    AUDIT_LOG {
+        string id PK "AUC-xxxxxxxx"
+        datetime timestamp
+        string agent_id FK "logical, agents.id"
+        string action_type
+        string policy_rule FK "logical, policy_rules.id"
+        string policy_desc
+        string risk_level
+        string outcome "PERMIT DENY ESCALATE"
+        text payload_masked
+        string payload_hash "sha256 of the raw payload"
+        string prev_hash "entry_hash of the previous row"
+        string entry_hash "sha256 over all 12 columns"
+        string session_id
+    }
+
+    APPROVAL_QUEUE {
+        string id PK "APR-xxxxxxxx"
+        string agent_id FK "logical, agents.id"
+        string action_type
+        text action_desc
+        string risk_level "High or Critical only"
+        string policy_rule FK "logical, policy_rules.id"
+        datetime created_at
+        datetime sla_deadline
+        string status "pending approved denied expired"
+        string reviewer FK "logical, users.email"
+        datetime reviewed_at
+        text payload_masked
+    }
+
+    POLICY_RULES {
+        string id PK "RULE-001"
+        string name
+        string action_type "or * wildcard"
+        string risk_threshold
+        string default_outcome
+        text conditions "null means action_type alone matches"
+        string reg_tag "Privacy Act 1988, ISO 27001"
+        bool active
+        int version
+        datetime last_modified
+        string created_by FK "logical, users.email"
+    }
+
+    USERS {
+        string id PK
+        string email UK
+        string hashed_password "bcrypt"
+        string role "Administrator Analyst Viewer"
+        datetime created_at
+        bool is_active
+    }
+
+    API_KEYS {
+        string id PK
+        string label
+        string key_hash "sha256, raw key shown once"
+        string prefix "masked display fragment"
+        string environment
+        datetime created_at
+        datetime last_used_at
+        string created_by FK "logical, users.email"
+        bool revoked
+    }
+
+    SCHEDULED_REPORTS {
+        string id PK
+        string frequency "daily weekly monthly"
+        string recipient
+        datetime next_run
+        datetime last_sent
+        string status "Active or Paused"
+        string created_by FK "logical, users.email"
+        datetime created_at
+    }
+
+    REPORT_EXPORTS {
+        string id PK
+        string name
+        string generated_by FK "logical, users.email"
+        datetime generated_at
+        string format "PDF or CSV"
+        int size_bytes
+        text content "export body stored inline"
+    }
+</pre>
+</div>
+<script>mermaid.initialize({startOnLoad:true, theme:'neutral'});</script>
+</body>
+</html>

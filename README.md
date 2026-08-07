@@ -155,10 +155,11 @@ as `float("= 100")`, and lowercased quoted literals.
 
 ## Documentation (A4 appendix set)
 
-- `docs/requirements-traceability.md` - RTM against the A2 baseline
-- `docs/architecture.md` - all layers + diagrams
+- `docs/requirements-traceability.md` - RTM against the A2 baseline, with build order and dependencies
+- `docs/sprint-progress.md` - the six A2 sprints, what each delivered and what it did not
+- `docs/architecture.md` - all layers + system diagram + entity relationship diagram
 - `docs/functionality.md` - system functionality and expected user interaction
 - `docs/interface-design.md` - what changed since the A3 designs and why
 - `docs/branding-style-guide.md` - brand, colours, typography, components
 - `docs/contribution-table.md` - who built what
-- `docs/screenshots/` - current screens from the running system
+- `docs/screenshots/` - current screens from the running system, plus both diagrams
