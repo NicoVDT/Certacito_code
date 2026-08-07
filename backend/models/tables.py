@@ -99,6 +99,22 @@ class ApiKeyDB(Base):
     revoked = Column(Boolean, default=False)
 
 
+class AgentDB(Base):
+    __tablename__ = "agents"
+
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    status = Column(String, default="active")  # active, suspended
+    model = Column(String, nullable=True)
+    container = Column(String, nullable=True)
+    registered_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_seen = Column(DateTime(timezone=True), nullable=True)
+    # comma separated action types. we only ever read the whole list back out
+    permissions = Column(Text, nullable=True)
+    total_actions = Column(Integer, default=0)
+    blocked_actions = Column(Integer, default=0)
+
+
 class ScheduledReportDB(Base):
     __tablename__ = "scheduled_reports"
 

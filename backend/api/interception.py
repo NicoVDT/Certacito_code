@@ -68,7 +68,7 @@ async def intercept_action(
                 session_id=request.session_id,
             )
 
-            record_agent_activity(request.agent_id, blocked=True)
+            await record_agent_activity(db, request.agent_id, blocked=True)
 
             return InterceptionResponse(
                 decision_id=f"DEC-{uuid.uuid4().hex[:8].upper()}",
@@ -115,7 +115,7 @@ async def intercept_action(
 
     # bump the registry counters. this was written months ago and never
     # actually wired up, so every agent sat on 0 actions / never seen
-    record_agent_activity(request.agent_id, blocked=(outcome == Outcome.deny))
+    await record_agent_activity(db, request.agent_id, blocked=(outcome == Outcome.deny))
 
     decision_id = f"DEC-{uuid.uuid4().hex[:8].upper()}"
 

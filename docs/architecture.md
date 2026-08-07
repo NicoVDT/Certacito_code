@@ -154,8 +154,17 @@ recorded as a limitation.
 ## Data model
 
 PostgreSQL 16, accessed asynchronously through SQLAlchemy 2.0 with asyncpg.
-Alembic manages migrations. Seven tables: `audit_log`, `approval_queue`,
-`policy_rules`, `users`, `api_keys`, `scheduled_reports`, `report_exports`.
+Eight tables: `audit_log`, `approval_queue`, `policy_rules`, `users`, `agents`,
+`api_keys`, `scheduled_reports`, `report_exports`.
+
+Alembic is configured, but the schema is created by `Base.metadata.create_all()`
+on startup and the one revision in `backend/alembic/versions` is empty. Nothing
+in the deployment runs `alembic upgrade`. Recorded here rather than left implied.
+
+The agent registry was a dictionary in `backend/api/agents.py` until it moved
+into the `agents` table. Every restart of the container used to drop whatever
+had been registered through `POST /api/v1/agents` and put the hardcoded entry
+back.
 
 Redis 7 backs rate limiting and transient state.
 

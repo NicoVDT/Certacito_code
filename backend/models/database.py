@@ -24,6 +24,38 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await seed_policies_if_empty()
+    await seed_agents_if_empty()
+
+
+async def seed_agents_if_empty():
+    """
+    Register the one agent we actually run, on a fresh database.
+
+    The registry was a dict in the api module, so it came back empty on every
+    restart and the seed was hardcoded. Same idea, it just lives in the table
+    now so a registration survives a redeploy.
+    """
+    from sqlalchemy import select, func as sqlfunc
+    from datetime import datetime, timezone
+    from backend.models.tables import AgentDB
+
+    async with async_session() as db:
+        count = (await db.execute(select(sqlfunc.count(AgentDB.id)))).scalar() or 0
+        if count:
+            return
+
+        db.add(AgentDB(
+            id="AGT-openclaw-azure",
+            name="OpenClaw Governance Agent",
+            status="active",
+            model="google/gemini-2.5-pro",
+            container="azure-vm",
+            registered_at=datetime(2026, 6, 25, 13, 0, tzinfo=timezone.utc),
+            permissions="tool_invoke,data_access,file_write,db_read",
+            total_actions=0,
+            blocked_actions=0,
+        ))
+        await db.commit()
 
 
 async def seed_policies_if_empty():
