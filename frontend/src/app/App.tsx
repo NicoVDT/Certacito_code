@@ -68,6 +68,15 @@ type Screen = "landing" | "login" | "agent-overview" | "dashboard" | "audit-log"
 type RiskLevel = "Low" | "Medium" | "High" | "Critical";
 type Outcome = "PERMIT" | "DENY" | "ESCALATE";
 
+// whoever is signed in. the header, the sidebar and the approve/deny calls all
+// need it, and it only lives in the root component, so it gets passed down
+type CurrentUser = { email: string; role: string } | null;
+
+function initials(user: CurrentUser) {
+  if (!user) return "?";
+  return user.email.slice(0, 2).toUpperCase();
+}
+
 interface AuditEntry {
   id: string;
   timestamp: string;
@@ -160,9 +169,11 @@ function formatSLA(secs: number) {
 interface SidebarProps {
   screen: Screen;
   setScreen: (s: Screen) => void;
+  user: CurrentUser;
+  onSignOut: () => void;
 }
 
-function Sidebar({ screen, setScreen }: SidebarProps) {
+function Sidebar({ screen, setScreen, user, onSignOut }: SidebarProps) {
   const [activityOpen, setActivityOpen] = useState(
     screen === "audit-log" || screen === "approval-queue"
   );
@@ -342,7 +353,7 @@ function Sidebar({ screen, setScreen }: SidebarProps) {
         <div className="flex items-center gap-2.5">
           <div className="flex items-center justify-center rounded-full flex-shrink-0"
             style={{ width: 30, height: 30, background: TEAL, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: "Arial, sans-serif" }}>
-            DA
+            {initials(user)}
           </div>
           <div className="flex-1 min-w-0">
             <div style={{ color: "#fff", fontSize: 12, fontWeight: 600, fontFamily: "Arial, sans-serif" }}>{user?.email.split("@")[0] || "User"}</div>
@@ -350,7 +361,7 @@ function Sidebar({ screen, setScreen }: SidebarProps) {
               Administrator
             </span>
           </div>
-          <button onClick={() => setScreen("landing")} style={{ color: "rgba(255,255,255,0.3)" }} title="Sign out">
+          <button onClick={onSignOut} style={{ color: "rgba(255,255,255,0.3)" }} title="Sign out">
             <LogOut size={13} />
           </button>
         </div>
@@ -575,7 +586,10 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
   const blocked = stats?.blocked ?? 0;
   const criticalEvents = stats?.critical_events ?? 0;
   const pendingApprovals = stats?.pending_approvals ?? 0;
-  const complianceScore = stats?.compliance_score ?? 0;
+  // null from the api means nothing happened in the window, which is not the
+  // same as scoring zero
+  const complianceScore: number | null = stats?.compliance_score ?? null;
+  const slaAdherence: number | null = stats?.sla_adherence ?? null;
 
   // build donut from live risk breakdown
   const liveDonut = stats?.risk_breakdown
@@ -649,9 +663,9 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
       {/* Secondary KPI strip */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         {[
-          { label: "Compliance Score", value: `${complianceScore}%`, sub: complianceScore > 80 ? "↑ healthy" : "↓ needs attention", color: GREEN, icon: <TrendingUp size={14} />, click: "reports" as Screen },
-          { label: "Active Agents", value: `${stats?.active_rules ?? 0} rules`, sub: "governance rules active", color: TEAL, icon: <Bot size={14} />, click: "agent-registry" as Screen },
-          { label: "SLA Adherence", value: pendingApprovals === 0 ? "100%" : "94%", sub: pendingApprovals > 0 ? `${pendingApprovals} awaiting review` : "all clear", color: NAVY, icon: <Activity size={14} />, click: "approval-queue" as Screen },
+          { label: "Compliance Score", value: complianceScore === null ? "no activity" : `${complianceScore}%`, sub: complianceScore === null ? "nothing intercepted in 24h" : complianceScore > 80 ? "↑ healthy" : "↓ needs attention", color: GREEN, icon: <TrendingUp size={14} />, click: "reports" as Screen },
+          { label: "Active Policy Rules", value: `${stats?.active_rules ?? 0}`, sub: "rules enforcing right now", color: TEAL, icon: <ShieldCheck size={14} />, click: "policy-rules" as Screen },
+          { label: "SLA Adherence", value: slaAdherence === null ? "no reviews yet" : `${slaAdherence}%`, sub: pendingApprovals > 0 ? `${pendingApprovals} awaiting review` : "all clear", color: NAVY, icon: <Activity size={14} />, click: "approval-queue" as Screen },
         ].map(sec => (
           <div key={sec.label}
             onClick={() => setScreen(sec.click)}
@@ -679,7 +693,9 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
             <h3 style={{ color: NAVY, fontSize: 13, fontWeight: 700 }}>Live Activity Feed</h3>
             <span style={{ color: "#9ca3af", fontSize: 11 }}>Last 10 decisions</span>
           </div>
-          <div className="divide-y" style={{ divideColor: "rgba(27,58,107,0.06)" }}>
+          {/* divideColor isnt a real css property, it was being dropped and the
+              rows got the default divider instead of ours */}
+          <div className="divide-y divide-[rgba(27,58,107,0.06)]">
             {liveAudit.slice(0, 10).map((entry) => (
               <button
                 key={entry.id}
@@ -1133,7 +1149,7 @@ function AuditLogScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
 }
 
 // ─── Approval Queue ──────────────────────────────────────────────────────────
-function ApprovalQueueScreen() {
+function ApprovalQueueScreen({ user }: { user: CurrentUser }) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [selectedItem, setSelectedItem] = useState<QueueItem | null>(null);
@@ -1218,16 +1234,19 @@ function ApprovalQueueScreen() {
     setModal(null);
   };
 
+  const criticalWaiting = items.filter(i => i.riskLevel === "Critical").length;
+
   return (
     <div className="flex-1 overflow-y-auto" style={{ fontFamily: "Arial, sans-serif" }}>
-      {/* Alert banner */}
-      {!alertDismissed && (
+      {/* Alert banner. the count was hardcoded at 2, so it sat there claiming
+          escalations even with an empty queue - count what is actually in it */}
+      {!alertDismissed && criticalWaiting > 0 && (
         <div className="flex items-center justify-between px-6 py-3"
           style={{ background: "#fef2f2", borderBottom: `2px solid ${RED}` }}>
           <div className="flex items-center gap-2">
             <AlertTriangle size={15} style={{ color: RED, flexShrink: 0 }} />
             <span style={{ color: RED, fontWeight: 700, fontSize: 13 }}>
-              2 new Critical-risk items escalated in the last 5 minutes
+              {criticalWaiting} Critical-risk {criticalWaiting === 1 ? "item is" : "items are"} waiting on a human decision
             </span>
           </div>
           <button onClick={() => setAlertDismissed(true)} style={{ color: RED }}>
@@ -1996,7 +2015,7 @@ interface Notification {
   read: boolean;
 }
 
-function TopHeader({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) => void }) {
+function TopHeader({ screen, setScreen, user, onSignOut }: { screen: Screen; setScreen: (s: Screen) => void; user: CurrentUser; onSignOut: () => void }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [search, setSearch] = useState("");
@@ -2149,7 +2168,7 @@ function TopHeader({ screen, setScreen }: { screen: Screen; setScreen: (s: Scree
           className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-gray-100">
           <div className="flex items-center justify-center rounded-full"
             style={{ width: 28, height: 28, background: TEAL, color: "#fff", fontSize: 11, fontWeight: 700 }}>
-            NV
+            {initials(user)}
           </div>
           <div className="text-left">
             <div style={{ color: NAVY, fontSize: 12, fontWeight: 600 }}>{user?.email.split("@")[0] || "User"}</div>
@@ -2178,7 +2197,7 @@ function TopHeader({ screen, setScreen }: { screen: Screen; setScreen: (s: Scree
               </button>
             ))}
             <div className="border-t" style={{ borderColor: "rgba(27,58,107,0.08)" }}>
-              <button onClick={() => setScreen("landing")}
+              <button onClick={() => { setProfileOpen(false); onSignOut(); }}
                 className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-gray-50 text-left"
                 style={{ color: RED, fontFamily: "Arial, sans-serif", fontSize: 12 }}>
                 <LogOut size={13} style={{ color: RED }} />
@@ -2197,7 +2216,6 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("landing");
   const [registryAgentId, setRegistryAgentId] = useState<string | null>(null);
   const [user, setUser] = useState<{email: string, role: string} | null>(null);
-  const [loginError, setLoginError] = useState("");
 
   // check if theres already a token saved from previous session
   useEffect(() => {
@@ -2210,19 +2228,6 @@ export default function App() {
       });
     }
   }, []);
-
-  const handleLogin = async (email: string, password: string) => {
-    try {
-      setLoginError("");
-      // using static api import
-      await login(email, password);
-      const me = await api.getMe();
-      setUser(me);
-      setScreen("dashboard");
-    } catch (err: any) {
-      setLoginError(err.message || "Login failed");
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("certacito_token");
@@ -2255,13 +2260,13 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#f4f6f9" }}>
-      <Sidebar screen={screen} setScreen={setScreen} />
+      <Sidebar screen={screen} setScreen={setScreen} user={user} onSignOut={handleLogout} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TopHeader screen={screen} setScreen={setScreen} />
+        <TopHeader screen={screen} setScreen={setScreen} user={user} onSignOut={handleLogout} />
         {screen === "agent-overview" && <AgentOverviewScreen onViewRegistry={(id) => { setRegistryAgentId(id); setScreen("agent-registry"); }} />}
         {screen === "dashboard" && <DashboardScreen setScreen={setScreen} />}
         {screen === "audit-log" && <AuditLogScreen setScreen={setScreen} />}
-        {screen === "approval-queue" && <ApprovalQueueScreen />}
+        {screen === "approval-queue" && <ApprovalQueueScreen user={user} />}
         {screen === "policy-rules" && <PolicyRulesScreen />}
         {screen === "agent-registry" && <AgentRegistryScreen initialSelectedAgentId={registryAgentId} />}
         {screen === "reports" && <ReportsScreen />}
