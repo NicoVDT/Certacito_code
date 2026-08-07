@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body{background:#fff;font-family:Arial,sans-serif;margin:0;padding:20px}
+  #wrap{width:1500px}
+</style>
+</head>
+<body>
+<div id="wrap">
+<pre class="mermaid">
+flowchart TB
+    classDef agent fill:#f0f4ff,stroke:#1B3A6B,color:#1A1A2E
+    classDef front fill:#e8f6f6,stroke:#0D7377,color:#1A1A2E
+    classDef back fill:#fff,stroke:#1B3A6B,color:#1A1A2E
+    classDef data fill:#f4f6f9,stroke:#6b7a99,color:#1A1A2E
+
+    subgraph agents["AGENT LAYER (callers)"]
+        A1["OpenClaw agent<br/>claude-cli + certacito-hook"]:::agent
+        A2["Traffic simulator<br/>demo script, run by hand"]:::agent
+        A3["LangChain interceptor<br/>SDK hook"]:::agent
+    end
+
+    subgraph front["FRONT END"]
+        R["React 18 + Vite + Tailwind 4<br/>10 screens, Recharts"]:::front
+        SM["FastAPI static mount<br/>serves the built SPA, same origin as the api"]:::front
+    end
+
+    subgraph back["BACK END - FastAPI, Python 3.13 :8000, published :80"]
+        I["/api/v1/intercept<br/>governance decision"]:::back
+        SG["Semantic guard<br/>injection patterns"]:::back
+        RC["Risk classifier<br/>Low/Med/High/Critical"]:::back
+        PE["Policy engine<br/>policies.yaml (git-tracked)"]:::back
+        AQ["Approval service<br/>SLA expiry checked on read"]:::back
+        AU["Audit service<br/>SHA-256 chain + PII masking"]:::back
+        WS["/ws/live<br/>JWT WebSocket push"]:::back
+    end
+
+    subgraph data["DATA LAYER (Docker)"]
+        PG[("PostgreSQL 16<br/>users · policies · audit_log<br/>approvals · agents · api keys · reports")]:::data
+        RD[("Redis 7<br/>rate limit counters")]:::data
+    end
+
+    A1 -->|X-API-Key| I
+    A2 -->|X-API-Key| I
+    A3 -->|X-API-Key| I
+    SM --> R
+    R <-->|JWT| I
+    I --> SG --> RC --> PE
+    PE -->|ESCALATE| AQ
+    PE --> AU
+    AQ --> AU
+    AU --> PG
+    AQ --> PG
+    I -.->|decision event| WS
+    WS -.-> R
+    I -.->|rate limit| RD
+</pre>
+</div>
+<script>mermaid.initialize({startOnLoad:true, theme:'neutral', flowchart:{curve:'basis'}});</script>
+</body>
+</html>
