@@ -85,6 +85,12 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm install
+      # vite build only strips the types, it never checks them - we shipped a
+      # component referencing a variable that wasnt in scope and the build was
+      # still green, so typecheck before building
+      - name: Typecheck
+        working-directory: frontend
+        run: npx tsc --noEmit
       - name: Build
         working-directory: frontend
         run: npx vite build
