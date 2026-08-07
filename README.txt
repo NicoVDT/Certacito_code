@@ -294,7 +294,8 @@ DOCUMENTATION (A4 APPENDIX SET)
 - docs/sprint-progress.md - the six A2 sprints, what each delivered and what it did not
 - docs/architecture.md - all layers + system diagram + entity relationship diagram
 - docs/functionality.md - system functionality and expected user interaction
-- docs/interface-design.md - what changed since the A3 designs and why
+- docs/interface-design.md - all ten screens as implemented, what changed since the A3 designs, and the A3 feedback point-by-point
+- docs/usability-evaluation.md - heuristic walkthrough + WCAG 2.1 AA audit of the live deployment, findings and open issues
 - docs/branding-style-guide.md - brand, colours, typography, components
 - docs/contribution-table.md - who built what, and the supervisor approval record
 - docs/screenshots/ - current screens from the running system, plus both diagrams

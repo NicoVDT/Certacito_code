@@ -32,8 +32,58 @@ The A3 design system survived contact with implementation almost untouched:
 
 ## 3. Screens as implemented
 
-Current screenshots live in `docs/screenshots/` (taken from the running system,
-simulator on). Screen-by-screen purpose is unchanged from A3 section 3.3.
+All ten screens of the implemented console, captured from the running Azure
+deployment with the simulator on (source files in `docs/screenshots/`). The A3
+feedback asked to see every designed screen, so they are all here, ordered the
+way a user meets them: entry, then the Compliance Officer triage journey, then
+the DevSecOps configuration journey.
+
+**Landing page** - the public "what is this" story before any login.
+
+![Landing page](screenshots/shot-landing.png)
+
+**Login** - JWT email/password with the SSO placeholder (change 1 in section 2).
+
+![Login](screenshots/shot-login.png)
+
+**Dashboard** - live KPIs, intercepted-actions feed, risk mix. The Compliance
+Officer's home screen.
+
+![Dashboard](screenshots/shot-dashboard.png)
+
+**Approval queue** - the human-in-the-loop worklist; expandable rows carry the
+full decision context, approve/deny act on the live API.
+
+![Approval queue](screenshots/shot-queue.png)
+
+**Audit log** - the hash-chained record with per-row chain hashes and the
+one-click Verify chain action.
+
+![Audit log](screenshots/shot-audit.png)
+
+**Reports and compliance** - exportable compliance posture over time.
+
+![Reports](screenshots/shot-reports.png)
+
+**Agent overview** - fleet status at a glance; the DevSecOps entry point.
+
+![Agent overview](screenshots/shot-agents.png)
+
+**Agent registry** - per-agent detail, permitted action types, live counters.
+
+![Agent registry](screenshots/shot-registry.png)
+
+**Policy rules** - policy CRUD plus the pre-built rule library.
+
+![Policy rules](screenshots/shot-policy.png)
+
+**Settings** - organisation, team, notifications, API keys, integrations. Team
+members and API keys are live (real users from the API, keys issued and revoked
+from this screen); the organisation form and notification toggles are
+client-side only in this release, and the integrations tab honestly reports
+every integration as not connected rather than faking a status.
+
+![Settings](screenshots/shot-settings.png)
 
 ## 4. Sponsor/supervisor feedback applied
 
@@ -42,3 +92,16 @@ simulator on). Screen-by-screen purpose is unchanged from A3 section 3.3.
 - "Understandable in a few minutes by someone new" (supervisor email, June) - the
   landing page + healthcare demo scenario (`POST /api/v1/demo/healthcare-scenario`)
   give a self-contained walkthrough.
+
+## 5. A3 marking feedback applied
+
+The A3 assessment feedback listed specific improvements. Point by point:
+
+| A3 feedback | What we did in A4 |
+|-------------|-------------------|
+| "Only a limited number of interface screens are presented" | All ten screens are implemented and shown in section 3, captured from the live system - none are mockups |
+| "Additional screenshots for all designed screens would make the screen flow even clearer" | The section 3 gallery is ordered along the two persona journeys, so the flow reads top to bottom |
+| Design approval "should be presented more consistently" | The approval record now lives in exactly one place - the sign-off box in the contribution table appendix - and no other document makes an approval claim |
+| "Provide additional user testing or usability evaluation" | New Usability Evaluation appendix: a heuristic walkthrough and WCAG 2.1 AA audit of the live deployment, plus the sponsor, supervisor and exhibition feedback and what each changed |
+| "Continue implementing the frontend and backend to demonstrate the complete governance platform" | The A4 submission is that: the full platform live on Azure, 105 passing tests, and a real agent (OpenClaw) governed through it |
+| "Ensure all group members actively contribute during demonstrations and clearly explain their individual design contributions" | Each member's individual contribution is recorded and signed in the contribution table appendix |
