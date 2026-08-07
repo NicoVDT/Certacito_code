@@ -16,10 +16,10 @@ same commit as this repository:
 
 | | |
 |---|---|
-| **Dashboard** | **http://20.92.93.30** |
+| **Dashboard** | **https://app.20-92-93-30.nip.io** |
 | **Sign in** | `admin@certacito.ai` / `test123` |
-| **API docs (Swagger)** | http://20.92.93.30/docs |
-| **Health check** | http://20.92.93.30/health |
+| **API docs (Swagger)** | https://app.20-92-93-30.nip.io/docs |
+| **Health check** | https://app.20-92-93-30.nip.io/health |
 
 It is an Azure VM in `australiaeast`, deployed by GitHub Actions on every push
 to `main`, so what you see is what is in this repo.
@@ -63,19 +63,19 @@ instead of a JWT:
 
 ```bash
 # permitted - an approved tool
-curl -X POST http://20.92.93.30/api/v1/intercept \
+curl -X POST https://app.20-92-93-30.nip.io/api/v1/intercept \
   -H "Content-Type: application/json" -H "X-API-Key: $AGENT_API_KEY" \
   -d '{"agent_id":"AGT-openclaw-azure","action_type":"tool_invoke",
        "payload":{"tool":"appointment_lookup","input":"clinic opening hours"}}'
 
 # denied - restricted dataset
-curl -X POST http://20.92.93.30/api/v1/intercept \
+curl -X POST https://app.20-92-93-30.nip.io/api/v1/intercept \
   -H "Content-Type: application/json" -H "X-API-Key: $AGENT_API_KEY" \
   -d '{"agent_id":"AGT-openclaw-azure","action_type":"data_access",
        "payload":{"target":"patient_records","destination":"external drive"}}'
 
 # escalated - external recipient, needs a human
-curl -X POST http://20.92.93.30/api/v1/intercept \
+curl -X POST https://app.20-92-93-30.nip.io/api/v1/intercept \
   -H "Content-Type: application/json" -H "X-API-Key: $AGENT_API_KEY" \
   -d '{"agent_id":"AGT-openclaw-azure","action_type":"email_send",
        "payload":{"to":"specialist@external-clinic.com.au","subject":"Referral"}}'

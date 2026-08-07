@@ -23,7 +23,8 @@ One job per colour. A colour never doubles up on meanings.
 | Accent | Teal | `#0D7377` | Active states, links, PERMIT accents, focus rings. |
 | Alert | Red | `#C0392B` | Critical risk, DENY, destructive actions. Nothing else. |
 | Positive | Green | `#27AE60` | PERMIT badges, healthy status, compliance pass. |
-| Warning | Amber | `#E67E22` / `#F39C12` | Medium/High risk, ESCALATE, SLA warnings. |
+| Warning | Amber | `#E67E22` | Medium/High risk, ESCALATE, SLA warnings. The only amber used in the interface. |
+| Chart | Gold | `#F39C12` | Fourth chart series only. Never used for risk or status, so it cannot be confused with ESCALATE. |
 | Canvas | Grey | `#F4F6F9` | Page background behind white cards. |
 | Ink | Dark navy | `#1A1A2E` | Body text. |
 

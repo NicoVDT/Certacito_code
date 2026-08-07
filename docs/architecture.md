@@ -42,6 +42,14 @@ Live updates come over a WebSocket at `/api/v1/ws/live` rather than polling. The
 socket authenticates with `?token=<jwt>`; an unauthenticated socket is rejected.
 Polling exists only as a fallback if the socket cannot connect.
 
+## The interception path, step by step
+
+The core governance decision, traced from `backend/api/interception.py`. Note
+the three separate DENY branches: the semantic guard short-circuits before the
+policy engine runs, an engine exception denies, and no matching rule denies.
+
+![Interception sequence diagram](screenshots/diagram-sequence-intercept.png)
+
 ## Back end
 
 FastAPI on Python 3.13, served by uvicorn. Fourteen routers mounted under
@@ -188,8 +196,11 @@ Eight tables: `audit_log`, `approval_queue`, `policy_rules`, `users`, `agents`,
 `api_keys`, `scheduled_reports`, `report_exports`.
 
 Entity relationship diagram, generated from the SQLAlchemy models in
-`backend/models/tables.py`: `docs/screenshots/database-erd.png` (mermaid source
-in `docs/database-erd.html`).
+`backend/models/tables.py` (mermaid source in `docs/database-erd.html`). Dashed
+lines are logical relationships that the database does not enforce, explained
+directly below:
+
+![Entity relationship diagram](screenshots/database-erd.png)
 
 **The relationships in that diagram are logical, not declared.** No column
 carries a `ForeignKey` constraint, so the database will not reject an
@@ -224,7 +235,16 @@ Redis 7 backs rate limiting and transient state.
 A background scheduler task starts with the application and drives scheduled
 report generation.
 
+## Component view
+
+The fourteen API routers and the services they call. Dashed lines are event
+pushes rather than calls:
+
+![Component diagram](screenshots/diagram-components.png)
+
 ## Deployment
+
+![Deployment diagram](screenshots/diagram-deployment.png)
 
 **Production is Docker Compose on an Azure VM**, not a managed platform. Three
 services from `docker-compose.azure.yml`:
@@ -235,7 +255,28 @@ services from `docker-compose.azure.yml`:
 
 The app image is a two-stage build. Stage one runs `npm ci` and `vite build`;
 stage two installs the Python dependencies and copies the built frontend in as
-`frontend_dist/`, which FastAPI serves. One image, one container, no nginx.
+`frontend_dist/`, which FastAPI serves. One image, one container, no nginx inside
+it.
+
+**TLS terminates in front of the container, in Caddy on the host**
+(`infra/caddy/Caddyfile`, deployed to `/etc/caddy/Caddyfile`). Caddy holds a real
+Let's Encrypt certificate and reverse-proxies to the app container on port 80:
+
+```
+browser --HTTPS--> Caddy (host :443) --HTTP--> app container (:80 -> :8000)
+```
+
+The certificate is obtained without owning a domain by using nip.io wildcard DNS,
+which resolves `app.20-92-93-30.nip.io` back to the VM's public IP. Caddy adds
+HSTS, `X-Content-Type-Options`, `X-Frame-Options` and a referrer policy, and
+passes `X-Real-IP` through so the rate limiter buckets by real client rather than
+by whatever the client claims. The app trusts that header only when
+`TRUST_PROXY_HEADER=true` is set.
+
+The bare-IP HTTP address still answers, because the container publishes port 80
+directly, so anything pointed at the old URL keeps working. That is a known
+limitation rather than a design choice: a hardened deployment would redirect it
+or close it at the network security group.
 
 Configuration is entirely environment variables (`DATABASE_URL`, `REDIS_URL`,
 `SECRET_KEY`, `AGENT_API_KEY`, `POLICY_CONFIG`, `RULE_LIBRARY`), read from a `.env`

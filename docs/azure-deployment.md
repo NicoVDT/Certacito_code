@@ -148,7 +148,7 @@ bug but isn't.
 
 ## Post-deploy checklist
 
-- `http://20.92.93.30/health` returns `{"status":"ok"}`
+- `https://app.20-92-93-30.nip.io/health` returns `{"status":"ok"}`
 - log in, confirm the dashboard populates and the LIVE badge is green
 - run the four demo prompts, confirm PERMIT / DENY / DENY / ESCALATE
 - open the audit log and run **Verify chain**

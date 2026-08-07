@@ -338,7 +338,7 @@ stamped. Revoked keys fail.
 - **Deployment:** GitHub Actions `.github/workflows/deploy.yml`, push to `main`
   triggers an SSH forced-command deploy to the Azure VM. Gated on
   `vars.AZURE_DEPLOY_ENABLED`. CI workflow runs the test suite separately.
-- **Live:** http://20.92.93.30 (Azure VM `certacito-vm`)
+- **Live:** https://app.20-92-93-30.nip.io (Azure VM `certacito-vm`)
 - **Auto-shutdown:** a DevTestLab schedule stops the VM daily at 17:00 UTC
   (3am AEST). **If the site is down, check this first** - it's almost always
   a deallocated VM, not a code fault. Start it and wait ~60s.
