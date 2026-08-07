@@ -73,8 +73,29 @@ async def dashboard_stats(db: AsyncSession = Depends(get_db)):
         )
         risks[risk] = r.scalar() or 0
 
-    # compliance score (simple calc: permits / total)
-    compliance = round((outcomes.get("PERMIT", 0) / max(total_intercepted, 1)) * 100)
+    # compliance score (simple calc: permits / total). null on a quiet day -
+    # dividing by max(total,1) used to report 0% "needs attention" when nothing
+    # had been intercepted at all, which reads as a failing system
+    compliance = (
+        round((outcomes.get("PERMIT", 0) / total_intercepted) * 100)
+        if total_intercepted
+        else None
+    )
+
+    # sla adherence: of the escalations a human actually actioned, how many
+    # landed before their deadline. the dashboard used to hardcode this at 94%
+    reviewed_result = await db.execute(
+        select(func.count(ApprovalQueue.id)).where(ApprovalQueue.reviewed_at.isnot(None))
+    )
+    reviewed_total = reviewed_result.scalar() or 0
+
+    on_time_result = await db.execute(
+        select(func.count(ApprovalQueue.id))
+        .where(ApprovalQueue.reviewed_at.isnot(None))
+        .where(ApprovalQueue.reviewed_at <= ApprovalQueue.sla_deadline)
+    )
+    on_time = on_time_result.scalar() or 0
+    sla_adherence = round((on_time / reviewed_total) * 100) if reviewed_total else None
 
     # print(f"[debug] dashboard total={total_intercepted} blocked={blocked}")
     return {
@@ -84,6 +105,8 @@ async def dashboard_stats(db: AsyncSession = Depends(get_db)):
         "pending_approvals": pending_approvals,
         "active_rules": active_rules,
         "compliance_score": compliance,
+        "sla_adherence": sla_adherence,
+        "reviewed_total": reviewed_total,
         "outcomes": outcomes,
         "risk_breakdown": risks,
     }
