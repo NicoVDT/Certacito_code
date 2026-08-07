@@ -25,6 +25,11 @@ same commit as this repository:
 It is an Azure VM in australiaeast, deployed by GitHub Actions on every push
 to main, so what you see is what is in this repo.
 
+Availability: the VM is shut down daily between 01:00 and 06:00 AEST to
+conserve student credit, and is up the rest of the day. If it does not respond
+outside those hours, please contact the group and we will bring it back up. Once
+marking is complete, please let us know so the deployment can be torn down.
+
 A FIVE MINUTE TOUR THAT PROVES THE SYSTEM WORKS
 
 1. Sign in and land on the Governance Dashboard. The KPI tiles, live feed
