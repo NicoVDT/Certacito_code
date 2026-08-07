@@ -33,11 +33,11 @@ function inlineImages(html) {
   });
 }
 
-const css = `
+const css = (coverH) => `
   @page { margin: 18mm 14mm 20mm 14mm; }
   * { box-sizing: border-box; }
   body { font-family: Arial, Helvetica, sans-serif; color: ${INK}; font-size: 10pt; line-height: 1.5; margin: 0; }
-  .cover { height: 232mm; display: flex; flex-direction: column; justify-content: center; page-break-after: always; }
+  .cover { height: ${coverH}; display: flex; flex-direction: column; justify-content: center; page-break-after: always; }
   .cover .rule { height: 4px; background: ${TEAL}; width: 90px; margin: 18px 0 22px; }
   .cover img { width: 74px; margin-bottom: 26px; }
   .cover .group { color: ${TEAL}; font-size: 11pt; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
@@ -74,7 +74,7 @@ for (const [file, title, orient] of DOCS) {
   // the first h1 becomes the cover title, so drop it from the body
   const body = inlineImages(marked.parse(md.replace(/^#\s.*\n/, '')));
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body>
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css(orient === 'landscape' ? '150mm' : '232mm')}</style></head><body>
     <div class="cover">
       <img src="${logo}">
       <div class="group">Group 28 &middot; CSIT321</div>
