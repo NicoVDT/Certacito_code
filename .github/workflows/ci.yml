@@ -82,9 +82,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      # ci not install, so this fails the same way the image build does if the
+      # lockfile drifts. the lockfile was missing entirely and CI never noticed
+      # because npm install does not need one
       - name: Install dependencies
         working-directory: frontend
-        run: npm install
+        run: npm ci
       # vite build only strips the types, it never checks them - we shipped a
       # component referencing a variable that wasnt in scope and the build was
       # still green, so typecheck before building
