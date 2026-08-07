@@ -12,5 +12,5 @@ Presentation delivery: Nico presents. The A4 marking sheet scores presentation
 structure and content, not how the speaking is divided up.
 
 
-## Final Sprint (July 25 - August 2)
-Note: Following the finalization of this table, Nico completed a solo final sprint to wrap up the remaining architectural work before submission. This included implementing the condition parser (recursive-descent tokenizer and 3-valued logic), migrating to passlib/bcrypt, implementing the Redis rate limiter, configuring Caddy TLS, proxy-header hardening, and scaffold cleanup.
+## Final Sprint (July 25 - August 7)
+Note: Following the finalization of this table, Nico completed a solo final sprint to wrap up the remaining architectural work before submission. This included implementing the condition parser (recursive-descent tokenizer and 3-valued logic), migrating to bcrypt, implementing the Redis rate limiter, configuring Caddy TLS, proxy-header hardening, and scaffold cleanup.

@@ -1,5 +1,5 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "certacito-frontend",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -83,11 +83,6 @@
     },
     "react-dom": {
       "optional": true
-    }
-  },
-  "pnpm": {
-    "overrides": {
-      "vite": "6.3.5"
     }
   }
 }

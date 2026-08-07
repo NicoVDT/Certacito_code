@@ -345,7 +345,7 @@ function Sidebar({ screen, setScreen }: SidebarProps) {
             DA
           </div>
           <div className="flex-1 min-w-0">
-            <div style={{ color: "#fff", fontSize: 12, fontWeight: 600, fontFamily: "Arial, sans-serif" }}>Nico VDT</div>
+            <div style={{ color: "#fff", fontSize: 12, fontWeight: 600, fontFamily: "Arial, sans-serif" }}>{user?.email.split("@")[0] || "User"}</div>
             <span style={{ background: "rgba(13,115,119,0.3)", color: TEAL, fontSize: 10, fontWeight: 600, fontFamily: "Arial, sans-serif", padding: "1px 6px", borderRadius: 4 }}>
               Administrator
             </span>
@@ -466,10 +466,10 @@ function LoginScreen({ onLogin, onBack }: { onLogin: (email: string, pwd: string
 
               <button
                 type="button"
-                onClick={() => onLogin("admin@certacito.ai", "test123")}
-                className="w-full py-2.5 rounded font-semibold transition-all hover:opacity-90"
+                onClick={() => alert("SSO is not configured for this demo environment.")}
+                className="w-full py-2.5 rounded font-semibold transition-all opacity-50 cursor-not-allowed"
                 style={{ background: "transparent", border: `1.5px solid ${NAVY}`, color: NAVY, fontFamily: "Arial, sans-serif", fontSize: 13 }}>
-                Sign in with SSO
+                Sign in with SSO (Disabled)
               </button>
             </form>
 
@@ -1206,9 +1206,9 @@ function ApprovalQueueScreen() {
     try {
       // using static api import
       if (modal.action === "approve") {
-        await api.approveItem(modal.item.id, "admin@certacito.ai");
+        await api.approveItem(modal.item.id, user?.email || "unknown");
       } else {
-        await api.denyItem(modal.item.id, "admin@certacito.ai");
+        await api.denyItem(modal.item.id, user?.email || "unknown");
       }
     } catch {
       // still remove from UI even if api call fails for now
@@ -2152,7 +2152,7 @@ function TopHeader({ screen, setScreen }: { screen: Screen; setScreen: (s: Scree
             NV
           </div>
           <div className="text-left">
-            <div style={{ color: NAVY, fontSize: 12, fontWeight: 600 }}>Nico VDT</div>
+            <div style={{ color: NAVY, fontSize: 12, fontWeight: 600 }}>{user?.email.split("@")[0] || "User"}</div>
             <div style={{ color: "#9ca3af", fontSize: 10 }}>Administrator</div>
           </div>
           <ChevronDown size={12} style={{ color: "#9ca3af" }} />
@@ -2162,8 +2162,8 @@ function TopHeader({ screen, setScreen }: { screen: Screen; setScreen: (s: Scree
           <div className="absolute right-0 top-full mt-2 bg-white rounded-xl shadow-xl border overflow-hidden z-50"
             style={{ width: 200, borderColor: "rgba(27,58,107,0.1)" }}>
             <div className="px-4 py-3 border-b" style={{ borderColor: "rgba(27,58,107,0.08)" }}>
-              <div style={{ color: NAVY, fontSize: 12, fontWeight: 700 }}>Nico VDT</div>
-              <div style={{ fontFamily: "Courier New, monospace", fontSize: 10, color: "#9ca3af" }}>nico.vdt@certacito.ai</div>
+              <div style={{ color: NAVY, fontSize: 12, fontWeight: 700 }}>{user?.email.split("@")[0] || "User"}</div>
+              <div style={{ fontFamily: "Courier New, monospace", fontSize: 10, color: "#9ca3af" }}>{user?.email || ""}</div>
             </div>
             {[
               { label: "Profile settings", icon: <User size={13} />, click: "settings" as Screen },

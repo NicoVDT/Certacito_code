@@ -1,7 +1,7 @@
 # Certacito.ai - Live Q&A Cheatsheet
 
 Built for ctrl-F during the presentation. Search for the thing you got asked about.
-Every claim here was checked against the code on 2026-07-12. If code and this
+Every claim here was checked against the code on 2026-08-07. If code and this
 file disagree, the code wins - re-check before quoting it.
 
 Keyword index for ctrl-F:
