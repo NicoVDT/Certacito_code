@@ -8,6 +8,9 @@ frontend_dist/
 *.egg-info/
 .pytest_cache/
 *.pdf
+# except the submitted appendix set - these are deliverables, and a marker who
+# downloads the repo as a zip should get them with everything else
+!docs/pdf/*.pdf
 *.env
 frontend/.env
 
