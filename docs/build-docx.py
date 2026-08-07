@@ -31,6 +31,7 @@ DOCUMENTS = [
     ("architecture.md", "System Architecture", False),
     ("functionality.md", "System Functionality", False),
     ("interface-design.md", "Interface Design", False),
+    ("usability-evaluation.md", "Usability Evaluation", False),
     ("branding-style-guide.md", "Branding and Style Guide", False),
     ("contribution-table.md", "Contribution Table", False),
 ]

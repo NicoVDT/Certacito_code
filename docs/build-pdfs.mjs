@@ -18,6 +18,7 @@ const DOCS = [
   ['architecture.md', 'System Architecture', 'portrait'],
   ['functionality.md', 'System Functionality', 'portrait'],
   ['interface-design.md', 'Interface Design', 'portrait'],
+  ['usability-evaluation.md', 'Usability Evaluation', 'portrait'],
   ['branding-style-guide.md', 'Branding and Style Guide', 'portrait'],
   ['contribution-table.md', 'Contribution Table', 'portrait'],
 ];
