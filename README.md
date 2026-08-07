@@ -49,6 +49,65 @@ to `main`, so what you see is what is in this repo.
 
 Everything above is also reproducible locally with the Docker quick start below.
 
+### Testing it as an agent would
+
+Steps 2 to 6 exercise the system through the dashboard and Swagger. To hit it the
+way a governed agent does, call `/api/v1/intercept` directly with the agent API
+key. Agents cannot perform a login flow, so they authenticate with a header
+instead of a JWT:
+
+```bash
+# permitted - an approved tool
+curl -X POST http://20.92.93.30/api/v1/intercept \
+  -H "Content-Type: application/json" -H "X-API-Key: $AGENT_API_KEY" \
+  -d '{"agent_id":"AGT-openclaw-azure","action_type":"tool_invoke",
+       "payload":{"tool":"appointment_lookup","input":"clinic opening hours"}}'
+
+# denied - restricted dataset
+curl -X POST http://20.92.93.30/api/v1/intercept \
+  -H "Content-Type: application/json" -H "X-API-Key: $AGENT_API_KEY" \
+  -d '{"agent_id":"AGT-openclaw-azure","action_type":"data_access",
+       "payload":{"target":"patient_records","destination":"external drive"}}'
+
+# escalated - external recipient, needs a human
+curl -X POST http://20.92.93.30/api/v1/intercept \
+  -H "Content-Type: application/json" -H "X-API-Key: $AGENT_API_KEY" \
+  -d '{"agent_id":"AGT-openclaw-azure","action_type":"email_send",
+       "payload":{"to":"specialist@external-clinic.com.au","subject":"Referral"}}'
+```
+
+Those return PERMIT / DENY / ESCALATE with the matched rule and a decision id, and
+each one lands in the audit log. **Markers: the key is not in this repository.**
+Ask the group for it, or use the same requests with your admin JWT
+(`Authorization: Bearer <token>`), which the endpoint also accepts. Without either
+you get a 401, which is itself the fail-closed behaviour being demonstrated.
+
+### The agent side of the loop
+
+The governed agent used in the demonstration is **OpenClaw** running the
+`claude-cli` runtime. It is not part of this repository, because the point of the
+architecture is that the governance layer does not depend on which agent
+framework sits in front of it. Two integration paths exist:
+
+- **Wrapper hooks** (used for the demo). Every tool the agent can invoke is a
+  shell wrapper that POSTs to `/api/v1/intercept` first and refuses to run the
+  underlying command unless the response is PERMIT. An exec gate does the same
+  for arbitrary shell calls. If the governance API is unreachable the wrapper
+  denies, so pulling the plug on Certacito stops the agent rather than freeing it.
+- **SDK callback** for Python agents: `backend/agents/langchain_interceptor.py`.
+  `CertacitoGovernanceHandler.check_tool_call()` maps a LangChain tool call to an
+  action type, calls the API and returns a `GovernanceDecision`; an exception
+  path returns DENY with rule `FAILSAFE`. Sync and async both provided.
+
+The interception contract is the same either way, which is what lets the demo
+scenario, the traffic simulator, the LangChain handler and a live agent all show
+up in one audit log.
+
+**The agent console itself is not published here.** It is an interface that
+executes tool calls on a host, so its address and access token are shared with
+the supervisor directly rather than committed to a public repository. Ask the
+group for a supervised walkthrough if you want to see the agent driven live.
+
 ---
 
 ## Architecture

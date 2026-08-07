@@ -95,15 +95,27 @@ will never connect in a browser.
 }
 
 https://20-92-93-30.nip.io {
-	basic_auth { ... }
 	reverse_proxy localhost:18789
 }
 ```
 
 `nip.io` is wildcard DNS that resolves the hostname straight back to the IP, which
-gets a real Let's Encrypt certificate without owning a domain. **Basic auth sits in
-front of it**, added because the site is reachable from the open internet and the
-gateway's own token travels in a URL query string.
+gets a real Let's Encrypt certificate without owning a domain.
+
+> **⚠️ Known security gap, unresolved at submission.** This site has no
+> authentication in front of it. The console behind it is an agent that executes
+> tool calls on the host, the gateway's own token travels in a URL query string
+> (so it lands in browser history, referrer headers and proxy logs), and the
+> hostname is discoverable: Let's Encrypt publishes every certificate it issues
+> to public Certificate Transparency logs, so "nobody will guess it" does not
+> hold. An earlier draft of this document described basic auth as being in place.
+> It was not. The fix is basic auth on the Caddy site or an NSG rule limiting 443
+> to known addresses, plus rotating the gateway token, and the site should be
+> taken down once marking is complete.
+>
+> Recorded here rather than quietly corrected, because a governance platform
+> claiming a control it does not have is the exact failure the platform exists to
+> catch.
 
 ### Interception on the agent side
 

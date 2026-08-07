@@ -56,6 +56,32 @@ shares the proxy's bucket and one active dashboard locks everyone out.
 Static files are mounted last, at `/`, so `/api/*` and `/health` keep winning
 against the SPA catch-all.
 
+### The agent side
+
+Certacito governs an agent that lives outside this repository. That separation is
+the design, not an omission: the governance layer holds the policy, the audit
+chain and the human workflow, and stays independent of whichever agent framework
+is in front of it. Three callers exercise the same `/api/v1/intercept` contract.
+
+| Caller | How it integrates | Where |
+|---|---|---|
+| OpenClaw (`claude-cli` runtime) | Shell wrappers per tool, plus an exec gate for arbitrary commands. Each POSTs to `/intercept` and refuses to run unless the outcome is PERMIT. | Deployed alongside the agent, not in this repo |
+| LangChain agents | `CertacitoGovernanceHandler.check_tool_call()` maps a tool call to an action type and returns a `GovernanceDecision`. Sync and async. | `backend/agents/langchain_interceptor.py` |
+| Traffic simulator | Posts synthetic decisions under invented agent ids for demonstration. | `backend/services/simulator.py` |
+
+Two properties matter more than the integration mechanics:
+
+- **The agent cannot opt out.** The wrapper is the only path to the underlying
+  command, so bypassing governance means not running the tool at all.
+- **Unreachable means denied.** If the API cannot be reached, the wrapper and the
+  LangChain handler both return DENY (rule `FAILSAFE`). Taking Certacito offline
+  stops the agent rather than freeing it, which is the opposite of how a
+  monitoring system behaves and is the point of the design.
+
+Agents authenticate with `X-API-Key` rather than a JWT, since there is no
+interactive login to perform. Unregistered agent ids are still evaluated and
+still audited; they simply do not appear in the registry.
+
 ### Interception path
 
 `POST /api/v1/intercept` is the core of the system. Order of operations:
