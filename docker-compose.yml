@@ -38,8 +38,11 @@ services:
       POLICY_CONFIG: "/app/backend/policies.yaml"
       RULE_LIBRARY: "/app/backend/rule_library.yaml"
       AGENT_API_KEY: "${AGENT_API_KEY:-dev-agent-key}"
+      REDIS_URL: "redis://redis:6379/0"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - ./backend:/app/backend

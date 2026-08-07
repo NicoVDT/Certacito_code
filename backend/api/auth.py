@@ -67,7 +67,10 @@ async def _user_from_jwt(token: str, db: AsyncSession) -> Optional[User]:
     if user_id is None:
         return None
     result = await db.execute(select(User).where(User.id == user_id))
-    return result.scalar_one_or_none()
+    user = result.scalar_one_or_none()
+    if user and not user.is_active:
+        return None
+    return user
 
 
 async def get_current_user(
@@ -134,6 +137,7 @@ async def register(body: UserCreate, request: Request, db: AsyncSession = Depend
             caller = await _user_from_jwt(auth_header.removeprefix("Bearer "), db)
         if caller is None:
             raise HTTPException(status_code=401, detail="Admin token required to create users")
+
         if caller.role != "Administrator":
             raise HTTPException(status_code=403, detail="Only administrators can create users")
 
@@ -168,6 +172,12 @@ async def login(
 
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Bad credentials")
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail="Inactive user"
+        )
 
     token = create_token({"sub": user.id, "role": user.role})
     return Token(access_token=token)

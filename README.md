@@ -62,7 +62,7 @@ API docs (Swagger) are at http://localhost:8000/docs.
 # database services
 docker compose up -d postgres redis
 
-# backend (needs python 3.11+)
+# backend (needs Python 3.13+)
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r backend/requirements.txt
 cp .env.example .env   # then edit the secrets
@@ -117,7 +117,7 @@ User registration is admin-only (the first ever account bootstraps as admin).
 
 ```bash
 source .venv/bin/activate
-python -m pytest tests/ -q
+cd backend && python -m pytest ../tests/backend/ -v
 ```
 
 Unit tests always run. The integration tests in `tests/backend/test_api.py`

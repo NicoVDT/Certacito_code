@@ -46,8 +46,6 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://100.122.76.39",
-        "https://openclaw-103.tail28b3e2.ts.net",
         "http://localhost:3000",
     ],
     allow_credentials=True,

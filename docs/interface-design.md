@@ -21,7 +21,7 @@ The A3 design system survived contact with implementation almost untouched:
 
 | # | A3 design | A4 implementation | Why |
 |---|-----------|-------------------|-----|
-| 1 | Sign-in via Azure AD | Local JWT login (email + bcrypt password), SSO button kept as inactive placeholder | Azure subscription not provisioned yet (FR-07 staged on Proxmox). JWT + RBAC gives the same role-gated behaviour to demo; the SSO swap is isolated inside `auth.py`. |
+| 1 | Sign-in via Azure AD | Local JWT login (email + bcrypt password), SSO button kept as inactive placeholder | Live on an Azure VM in australiaeast. JWT + RBAC gives the same role-gated behaviour to demo; the SSO swap is isolated inside `auth.py`. |
 | 2 | Typography: Inter / JetBrains Mono | Arial / Courier New system stack | Licensing-free system fonts render identically across marker machines with zero font loading. Visual intent (prose vs system identifiers) is preserved. Revisit for production. |
 | 3 | Static mock numbers in every panel | All KPIs, feeds, charts and tables driven by the live API; WebSocket push for instant updates | The A3 prototype only had to look real. A4 has to be real - a live simulator (~4 events/min) plus the OpenClaw agent feed the same pipeline a customer deployment would. |
 | 4 | Audit "Export modal" | Direct Export CSV (client-side) + Export PDF (print stylesheet) + a new **Verify chain** button | Verify chain surfaces the tamper-evidence story in one click during demos - it re-walks the whole SHA-256 chain server-side. The modal added a step without adding value. |

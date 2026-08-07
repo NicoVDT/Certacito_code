@@ -361,7 +361,7 @@ Run: `pytest tests/backend/test_api.py -q`
 ## 14. REQUIREMENTS STATUS
 
 - **Done:** FR-01 to FR-06, FR-08, FR-09, FR-10
-- **FR-07** - deployed on Azure now (VM + Actions CD). RTM may still say Proxmox,
+- **FR-07** - deployed on Azure now (VM + Actions CD). RTM is updated for Azure,
   check before presenting.
 - **FR-11 (Group 2 integration)** - not done. Blocked on their agent API
   contract. Say it plainly, it's a dependency not a failure.

@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     )
 
     # jwt
-    secret_key: str = os.getenv("SECRET_KEY", "dev-only-change-in-prod")
+    secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
