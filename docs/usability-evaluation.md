@@ -74,7 +74,7 @@ product, which is the point of collecting it:
 | Supervisor email, June | A new viewer should understand the system in a few minutes | Public landing page plus the self-contained healthcare demo scenario |
 | Exhibition visitors | Wanted the "what is this and why should I care" story before seeing a console | The landing page exists because of this |
 
-## 5. Limitations, honestly
+## 5. What we did not do
 
 - **No moderated user testing.** We did not run task-based sessions with
   recruited participants, and we did not administer SUS - with only the team as
@@ -94,6 +94,6 @@ The implemented console holds up well against the heuristics it was designed to:
 status is visible everywhere, errors are recoverable and clearly worded, and the
 structural palette is comfortably AA-compliant. The audit still earned its keep -
 it caught a login-breaking bug before submission, plus four fixed and five open
-issues, each open one with a tested replacement value ready to apply. The honest
-gap is moderated testing with real compliance users, which needs access we do
-not have this session and is flagged for A5.
+issues, each open one with a tested replacement value ready to apply. The gap
+that matters is moderated testing with real compliance users, which needs access
+we do not have this session and is flagged for A5.
