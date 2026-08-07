@@ -148,15 +148,16 @@ decided" is not an audit trail.
 
 ---
 
-## 6. POLICY ENGINE + THE 8 RULES
+## 6. POLICY ENGINE + THE 12 RULES
 
 **File:** `backend/services/policy_engine.py`, rules in `backend/policies.yaml`
 
-Evaluation logic (`evaluate`, line 35):
+Evaluation logic (`evaluate`):
 - Skips inactive rules.
 - Matches on `action_type`, with `*` as wildcard.
-- Tracks the **highest-risk** matching rule; that rule's `default_outcome` is
-  what gets returned.
+- Collects **every** matching rule, then returns the **most restrictive
+  outcome** of them (DENY beats ESCALATE beats PERMIT) and separately the
+  **highest risk threshold** of them. Order in the yaml does not decide it.
 - No match at all = DENY (fail-closed).
 
 | Rule | Action type | Risk | Outcome | Reg tag | Active |
