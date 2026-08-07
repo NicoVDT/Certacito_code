@@ -16,7 +16,7 @@ Accountability areas follow the split agreed with the supervisor (June email).
 | Member | Accountability area | A4 contribution (confirmed) | Sign |
 |---|---|---|---|
 | Nico | Overall coordination, core architecture, semantic security | Infrastructure + deployment, backend hardening (RBAC), semantic guard logic, frontend dashboard skeleton | N.V. |
-| Daniel | Backend logic, database models, system behaviour | Postgres/SQLAlchemy models, risk classifier, rate limiting, agent registry CRUD, audit verification | D.T. |
+| Daniel | Backend logic, database models, system behaviour, agent-facing security | Postgres/SQLAlchemy models, risk classifier, rate limiting, agent registry CRUD, API keys for agent authentication, audit chain verification endpoint | D.T. |
 | Sai | Testing, rule configuration, live monitoring | Policy rules config, WS dashboard charts (recharts), automated test suite for engines | S.M. |
 | Allan | Immutability, human-in-the-loop flows, UI refinement | SHA-256 audit log chaining, approval queue, policy engine conditions, frontend settings and reports screens | A.J. |
 
@@ -27,17 +27,12 @@ did the research and planning the build was specified from. Their areas are as
 recorded in the A2 report contribution table, and the requirements they wrote
 are the ones the RTM traces against.
 
-| Member | Accountability area | Contribution |
-|---|---|---|
-| Peter | Security and compliance | Security and compliance requirements, policy engine documentation, non-functional requirements, Commonwealth privacy regulation research |
-| Roland | Branding and presentation, tools | Branding section and style direction, document formatting and colour consistency, glossary, appendices, conclusion, tools selection, local development and repository structure, branching strategy |
+| Member | Accountability area | Contribution | Sign |
+|---|---|---|---|
+| Peter | Security and compliance | Security and compliance requirements, policy engine documentation, non-functional requirements, Commonwealth privacy regulation research | P.A. |
+| Roland | Branding and presentation, tools | Branding section and style direction, document formatting and colour consistency, glossary, appendices, conclusion, tools selection, local development and repository structure, branching strategy | R.A. |
 
-Splitting the table this way rather than merging the two groups is deliberate.
-It shows who wrote which part of the system honestly, without dropping members
-who contributed earlier in the project.
-
-Presentation delivery: Nico presents. The A4 marking sheet scores presentation
-structure and content, not how the speaking is divided up.
+Presentation delivered by Nico.
 
 
 ## Final Sprint (July 25 - August 7)

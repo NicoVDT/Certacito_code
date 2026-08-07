@@ -1,7 +1,7 @@
 # Requirements Traceability Matrix - Certacito.ai (Group 28)
 
 Status as of 07 August 2026, against the A2 requirements baseline.
-Priority follows MoSCoW. "Evidence" points at where a marker can verify.
+Priority follows MoSCoW. "Evidence" points at where each claim can be verified.
 Build order and what depends on what is in the section below the table.
 
 | ID | Requirement | Type | Priority | Status | Evidence / Notes |

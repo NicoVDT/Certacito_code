@@ -3,14 +3,13 @@
 A4 appendix. Status as of 07 August 2026.
 
 A2 committed the group to Agile Scrum with MoSCoW prioritisation across six
-sprints. This document reports what each of those sprints actually produced,
-against the deliverables A2 named, with a pointer to where a marker can verify
-each claim in the running system or the repository.
+sprints. This document reports what each of those sprints produced, against the
+deliverables A2 named, with a pointer to where each claim can be verified in the
+running system or the repository.
 
 Deliverable wording in the tables below is quoted from A2 section 5.4 so the
 comparison is like for like. Status is one of **Done**, **Partial**,
-**Descoped**, **Blocked** or **Not done**. Items that were not delivered are
-listed as not delivered rather than reworded into something that was.
+**Descoped**, **Blocked** or **Not done**.
 
 ## The MVP the sprints were building toward
 
@@ -91,13 +90,11 @@ absent.
 | 5 | 0.5 of 3 | Group 2 integration (external), Kali red team, DLP |
 | 6 | 3 of 4 | operator user guide |
 
-The pattern is worth stating plainly rather than leaving for a marker to infer.
 Every deliverable that was a piece of the system itself was built. The gaps sit
 in two places: process artefacts the team skipped in favour of building
 (Sprint 1), and work that depended on something outside the team's control
-(Group 2) or was explicitly conditional in A2 (Databricks, DLP). The one gap
-with no excuse attached is the red team exercise, which was in scope,
-unconditional, and not done.
+(Group 2) or was explicitly conditional in A2 (Databricks, DLP). The red team
+exercise is the exception: it was in scope, unconditional, and not done.
 
 ## Reflection: was there enough time to learn the stack?
 

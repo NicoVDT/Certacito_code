@@ -111,11 +111,9 @@ gets a real Let's Encrypt certificate without owning a domain.
 > hold. An earlier draft of this document described basic auth as being in place.
 > It was not. The fix is basic auth on the Caddy site or an NSG rule limiting 443
 > to known addresses, plus rotating the gateway token, and the site should be
-> taken down once marking is complete.
->
-> Recorded here rather than quietly corrected, because a governance platform
-> claiming a control it does not have is the exact failure the platform exists to
-> catch.
+> taken down once marking is complete. A governance platform claiming a control
+> it does not have is the exact failure the platform exists to catch, so the gap
+> is documented rather than silently corrected.
 
 ### Interception on the agent side
 
