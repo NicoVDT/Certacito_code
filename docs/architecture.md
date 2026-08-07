@@ -102,7 +102,11 @@ falls through to the default deny. That direction is deliberate: unresolvable
 conditions were previously treated as satisfied, which on a *permit* rule meant
 allowing exactly the thing the rule existed to gate.
 
-**Known limitation:** `OR` is not supported.
+The grammar covers `==`, `!=`, `>`, `<`, `>=`, `<=`, `IN`, `NOT IN`, `CONTAINS`,
+`NOT CONTAINS`, `MATCHES`, `NOT MATCHES`, `AND`, `OR`, `NOT` and parentheses.
+`OR` was genuinely missing at one point and this document said so; the
+recursive-descent parser in `backend/services/condition_parser.py` supports it,
+verified by the cases in `tests/backend/test_condition_parser.py`.
 
 ### Audit chain
 
