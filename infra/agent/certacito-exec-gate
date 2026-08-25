@@ -46,6 +46,15 @@ resolve_tool_id() {
     # looks broken. but some assignments change what the binary IS, so those
     # are refused rather than skipped.
     rest="$str"
+
+    # `env TZ=... date` is the same shape as a bare assignment prefix, so skip a
+    # plain leading env. not `env -i` or `env --unset`, which change the
+    # environment the binary actually sees.
+    case "$rest" in
+        env\ -*|env\ --*) echo "__unsafe_env__"; return ;;
+        env\ *)            rest="${rest#env }" ;;
+    esac
+
     while :; do
         w="${rest%% *}"
         case "$w" in
