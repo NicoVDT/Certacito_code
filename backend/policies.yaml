@@ -13,6 +13,13 @@ lists:
     - letter_generator
     - summariser
     - appointment_lookup
+    # shell utilities the exec gate actually invokes. the gate sends the
+    # command's basename as tool_id, so anything missing here fails the IN test
+    # and falls through to the default deny - which looked like the harness was
+    # broken rather than governing
+    - echo
+    - date
+    - ls
   approved_vendors:
     - api.partner.com
     - api.medicare.gov.au
