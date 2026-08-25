@@ -7,6 +7,7 @@ import {
   TrendingUp, Plus, X, Play, Pause, Trash2,
 } from "lucide-react";
 import * as api from "../../api/client";
+import { fmtTime } from "../fmtTime";
 
 const NAVY = "#1B3A6B";
 const TEAL = "#0D7377";
@@ -440,7 +441,7 @@ export function ReportsScreen() {
                       <span style={{ color: "#374151", fontSize: 12 }}>{exp.generated_by}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span style={{ fontFamily: "Courier New, monospace", fontSize: 11, color: "#374151" }}>{exp.timestamp?.slice(0, 16).replace("T", " ")}</span>
+                      <span style={{ fontFamily: "Courier New, monospace", fontSize: 11, color: "#374151" }}>{fmtTime(exp.timestamp).slice(0, 16)}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <span style={{

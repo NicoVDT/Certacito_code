@@ -53,6 +53,7 @@ import { AgentRegistryScreen } from "./components/AgentRegistryScreen";
 import { ReportsScreen } from "./components/ReportsScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { LandingPage } from "./components/LandingPage";
+import { fmtTime, nowLocal } from "./fmtTime";
 
 // brand colours - duped in a few other screens, TODO: pull into one file
 const NAVY = "#1B3A6B";
@@ -505,7 +506,7 @@ function LoginScreen({ onLogin, onBack }: { onLogin: (email: string, pwd: string
 function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
   const [stats, setStats] = useState<any>(null);
   const [liveAudit, setLiveAudit] = useState<AuditEntry[]>([]);
-  const [lastUpdate, setLastUpdate] = useState(new Date().toISOString().replace("T", " ").slice(0, 19));
+  const [lastUpdate, setLastUpdate] = useState(nowLocal());
   const [trendData, setTrendData] = useState<any[]>([]);
   const [violations, setViolations] = useState<any[]>([]);
 
@@ -525,7 +526,7 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
         if (audit && audit.length > 0) {
           setLiveAudit(audit.map((e: any) => ({
             id: e.id,
-            timestamp: e.timestamp?.replace("T", " ").slice(0, 19) || "",
+            timestamp: fmtTime(e.timestamp),
             agentId: e.agent_id,
             actionType: e.action_type,
             policyRule: e.policy_rule || "—",
@@ -534,7 +535,7 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
             outcome: e.outcome as Outcome,
           })));
         }
-        setLastUpdate(new Date().toISOString().replace("T", " ").slice(0, 19));
+        setLastUpdate(nowLocal());
       } catch {}
     };
     fetchStats();
@@ -558,7 +559,7 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
             // instantly prepend to activity feed
             setLiveAudit(prev => [{
               id: event.decision_id,
-              timestamp: event.timestamp?.replace("T", " ").slice(0, 19) || "",
+              timestamp: fmtTime(event.timestamp),
               agentId: event.agent_id,
               actionType: event.action_type,
               policyRule: event.matched_rule || "—",
@@ -566,7 +567,7 @@ function DashboardScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
               riskLevel: event.risk_level as RiskLevel,
               outcome: event.outcome as Outcome,
             }, ...prev].slice(0, 10));
-            setLastUpdate(new Date().toISOString().replace("T", " ").slice(0, 19));
+            setLastUpdate(nowLocal());
             // refresh stats on next tick
             setTimeout(fetchStats, 200);
           }
@@ -858,7 +859,7 @@ function AuditLogScreen({ setScreen }: { setScreen: (s: Screen) => void }) {
         if (data && data.length > 0) {
           setEntries(data.map((e: any) => ({
             id: e.id,
-            timestamp: e.timestamp?.replace("T", " ").slice(0, 19) || "",
+            timestamp: fmtTime(e.timestamp),
             agentId: e.agent_id,
             actionType: e.action_type,
             policyRule: e.policy_rule || "—",
@@ -1175,7 +1176,7 @@ function ApprovalQueueScreen({ user }: { user: CurrentUser }) {
             policyDesc: "",
             slaSeconds: Math.max(0, Math.floor((new Date(a.sla_deadline).getTime() - Date.now()) / 1000)),
             user: "—",
-            sessionStart: a.created_at?.replace("T", " ").slice(0, 19) || "",
+            sessionStart: fmtTime(a.created_at),
           }));
           setItems(mapped);
           setTimers(Object.fromEntries(mapped.map(i => [i.id, i.slaSeconds])));
@@ -1187,7 +1188,7 @@ function ApprovalQueueScreen({ user }: { user: CurrentUser }) {
         const audit = await api.getAuditLog(50);
         setRecentActions((audit || []).map((e: any) => ({
           id: e.id,
-          timestamp: (e.timestamp || "").replace("T", " ").slice(0, 19),
+          timestamp: fmtTime(e.timestamp),
           agentId: e.agent_id,
           actionType: e.action_type,
           risk: e.risk_level,
@@ -2045,7 +2046,7 @@ function TopHeader({ screen, setScreen, user, onSignOut }: { screen: Screen; set
             id: e.id,
             type: (e.risk_level === "Critical" ? "critical" : e.outcome === "ESCALATE" ? "warning" : "info") as Notification["type"],
             message: `${e.agent_id} ${e.action_type} - ${e.outcome}${e.policy_rule ? ` (${e.policy_rule})` : ""}`,
-            time: (e.timestamp || "").replace("T", " ").slice(0, 19),
+            time: fmtTime(e.timestamp),
             read: false,
           }));
         setNotifications(notable);
