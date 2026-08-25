@@ -1,0 +1,91 @@
+#!/bin/bash
+# Certacito execution gate for OpenClaw
+#
+# The agent is only permitted to run this one program. Everything it wants to do
+# arrives here as arguments, gets classified, and goes to the governance API
+# before anything executes. Deployed to /usr/local/bin/certacito-exec-gate.
+
+CERTACITO_API="${CERTACITO_API_URL:-http://localhost}"
+AGENT_ID="${CERTACITO_AGENT_ID:-AGT-openclaw-azure}"
+API_KEY="$CERTACITO_API_KEY"
+
+CMD="$*"
+
+# the agent wraps everything in `bash -lc "<cmd>"`, so we used to see tool_id
+# "bash" for literally every action and deny it - which read as the harness
+# being broken rather than governing. look through the wrapper to the real
+# command instead.
+INNER=""
+case "$(basename "${1:-}")" in
+  bash|sh|zsh|dash)
+    prev=""
+    for a in "$@"; do
+      case "$prev" in
+        -c|-lc|-cl|-ic) INNER="$a"; break ;;
+      esac
+      prev="$a"
+    done
+    ;;
+esac
+
+if [ -n "$INNER" ]; then
+    # do NOT try to parse a compound command. `date; rm -rf /` would report
+    # tool_id=date and inherit date's permit. anything with shell metacharacters
+    # gets a tool_id that is not on any allowlist, so it falls to the default
+    # deny like it should.
+    case "$INNER" in
+        *[\;\&\|\`\$\(\)\<\>]*) TOOL_ID="__compound__" ;;
+        *)                      TOOL_ID="$(basename "${INNER%% *}")" ;;
+    esac
+    CMD="$INNER"
+else
+    TOOL_ID="$(basename "${1:-}")"
+fi
+
+ACTION_TYPE="tool_invoke"
+
+if echo "$CMD" | grep -qiE "patient|medicare|record|data"; then
+    ACTION_TYPE="data_access"
+elif echo "$CMD" | grep -qiE "email|mail|send"; then
+    ACTION_TYPE="email_send"
+elif echo "$CMD" | grep -qiE "curl|wget|http|api"; then
+    ACTION_TYPE="external_call"
+elif echo "$CMD" | grep -qiE "password|secret|key|cred"; then
+    ACTION_TYPE="credential_access"
+fi
+
+# which dataset (if any) the command touches - the data_access policies key on
+# target_dataset, so name it when we can. keep in sync with restricted_datasets
+# in policies.yaml
+TARGET=""
+for ds in patient_records claims_database medicare_records patients billing credentials; do
+    if echo "$CMD" | grep -qi "$ds"; then TARGET="$ds"; break; fi
+done
+
+# passed through the env rather than interpolated into the source - CMD is
+# arbitrary text and quotes in it broke the old version
+RESULT=$(CMD="$CMD" TARGET="$TARGET" TOOL_ID="$TOOL_ID" AGENT_ID="$AGENT_ID" ACTION_TYPE="$ACTION_TYPE" \
+    CERTACITO_API="$CERTACITO_API" API_KEY="$API_KEY" python3 -c '
+import urllib.request, json, os
+payload = {"command": os.environ["CMD"], "tool_id": os.environ["TOOL_ID"], "input": os.environ["CMD"]}
+if os.environ.get("TARGET"):
+    payload["target"] = os.environ["TARGET"]
+data = json.dumps({"agent_id": os.environ["AGENT_ID"], "action_type": os.environ["ACTION_TYPE"], "payload": payload}).encode()
+req = urllib.request.Request(os.environ["CERTACITO_API"] + "/api/v1/intercept", data=data, headers={"Content-Type": "application/json", "X-API-Key": os.environ["API_KEY"]})
+try:
+    resp = urllib.request.urlopen(req, timeout=5)
+    d = json.loads(resp.read())
+    print(d.get("outcome","DENY"))
+except:
+    print("DENY")
+' 2>/dev/null)
+
+if [ "$RESULT" = "PERMIT" ]; then
+    exec "$@"
+elif [ "$RESULT" = "ESCALATE" ]; then
+    echo "[CERTACITO] Action escalated - awaiting human approval"
+    exit 2
+else
+    echo "[CERTACITO] Action BLOCKED by governance policy ($ACTION_TYPE)"
+    exit 1
+fi
