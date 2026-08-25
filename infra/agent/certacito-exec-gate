@@ -28,18 +28,44 @@ case "$(basename "${1:-}")" in
     ;;
 esac
 
-if [ -n "$INNER" ]; then
+# work out what a command string is actually invoking. returns a tool_id that
+# is deliberately un-allowlistable when the string is something we cannot govern
+# as a single tool.
+resolve_tool_id() {
+    local str="$1" rest w next
+
     # do NOT try to parse a compound command. `date; rm -rf /` would report
     # tool_id=date and inherit date's permit. anything with shell metacharacters
-    # gets a tool_id that is not on any allowlist, so it falls to the default
-    # deny like it should.
-    case "$INNER" in
-        *[\;\&\|\`\$\(\)\<\>]*) TOOL_ID="__compound__" ;;
-        *)                      TOOL_ID="$(basename "${INNER%% *}")" ;;
+    # falls to the default deny like it should.
+    case "$str" in
+        *[\;\&\|\`\$\(\)\<\>]*) echo "__compound__"; return ;;
     esac
+
+    # `TZ=Australia/Sydney date` should be governed as date, not as the
+    # assignment - otherwise every env-prefixed command denies and the harness
+    # looks broken. but some assignments change what the binary IS, so those
+    # are refused rather than skipped.
+    rest="$str"
+    while :; do
+        w="${rest%% *}"
+        case "$w" in
+            LD_PRELOAD=*|LD_LIBRARY_PATH=*|PATH=*|IFS=*|BASH_ENV=*|ENV=*|SHELLOPTS=*|LD_AUDIT=*)
+                echo "__unsafe_env__"; return ;;
+            [A-Za-z_][A-Za-z0-9_]*=*)
+                next="${rest#* }"
+                [ "$next" = "$rest" ] && break
+                rest="$next" ;;
+            *) break ;;
+        esac
+    done
+    basename "${rest%% *}"
+}
+
+if [ -n "$INNER" ]; then
+    TOOL_ID="$(resolve_tool_id "$INNER")"
     CMD="$INNER"
 else
-    TOOL_ID="$(basename "${1:-}")"
+    TOOL_ID="$(resolve_tool_id "$*")"
 fi
 
 ACTION_TYPE="tool_invoke"
